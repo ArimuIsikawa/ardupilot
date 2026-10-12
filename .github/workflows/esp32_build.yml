@@ -3,11 +3,7 @@ name: ESP32 Build
 on:
   push:
     paths-ignore:
-      # remove non copter and plane vehicles
-      - 'AntennaTracker/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
+      # Plane firmware
       # remove non esp32 HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_SITL/**'
@@ -70,11 +66,7 @@ on:
 
   pull_request:
     paths-ignore:
-      # remove non copter and plane vehicles
-      - 'AntennaTracker/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
+      # Plane firmware
       # remove non esp32 HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_SITL/**'
@@ -210,33 +202,3 @@ jobs:
 
           cp build/${{matrix.config}}/esp-idf_build/ardupilot.bin ./ArduPlane.${{matrix.config}}.bin
           cp build/${{matrix.config}}/esp-idf_build/ardupilot.elf ./ArduPlane.${{matrix.config}}.elf
-          echo "### Build Copter ${{matrix.config}} :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo './waf copter' >> $GITHUB_STEP_SUMMARY  
-          ./waf copter | tee >( grep -vE 'Compiling|Generat|includes.list|Parsing|Validation|Building|Linking|Detecting|linker|\*\*\*\*\*\*\*|Partition|SubType|Checking|esp-idf' --color=never --line-buffered > summary2.log)  
-
-          cat summary2.log >> $GITHUB_STEP_SUMMARY  
-
-          cp build/${{matrix.config}}/esp-idf_build/ardupilot.bin ./ArduCopter.${{matrix.config}}.bin
-          cp build/${{matrix.config}}/esp-idf_build/ardupilot.elf ./ArduCopter.${{matrix.config}}.elf
-
-          cp build/${{matrix.config}}/esp-idf_build/bootloader/bootloader.bin ./bootloader.${{matrix.config}}.bin
-          cp build/${{matrix.config}}/esp-idf_build/partition_table/partition-table.bin ./partition-table.${{matrix.config}}.bin
-
-          echo "### Assets avail in artifact:" >> $GITHUB_STEP_SUMMARY
-          ls bootloader* partition* Ardu*.elf Ardu*.bin >> $GITHUB_STEP_SUMMARY
-
-      - name: Archive artifacts
-        uses: actions/upload-artifact@v6
-        with:
-           name: esp32-binaries -${{matrix.config}}
-           path: |
-              /home/runner/work/ardupilot/ardupilot/ArduPlane.${{matrix.config}}.bin
-              /home/runner/work/ardupilot/ardupilot/ArduPlane.${{matrix.config}}.elf
-              /home/runner/work/ardupilot/ardupilot/ArduCopter.${{matrix.config}}.bin
-              /home/runner/work/ardupilot/ardupilot/ArduCopter.${{matrix.config}}.elf
-              /home/runner/work/ardupilot/ardupilot/bootloader.${{matrix.config}}.bin
-              /home/runner/work/ardupilot/ardupilot/partition-table.${{matrix.config}}.bin
-
-
-           retention-days: 14
-           

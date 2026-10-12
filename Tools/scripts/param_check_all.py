@@ -28,16 +28,11 @@ periph_hwdefs_to_skip = set([  # Most of these fail due to NET_ params
 ])
 
 sitl_params_to_skip = set([
-    'default_params/blimp.parm',
     'default_params/stratoblimp.parm',
-    'default_params/motorboat.parm',
-    'default_params/sub.parm',
-    'default_params/sub-6dof.parm',
 ])
 
 frame_params_to_skip = set([
     'EFlight_Convergence.param',
-    'WLToys_V383_HeliQuad.param',
 ])
 
 
@@ -45,7 +40,7 @@ VEHICLE_BOARDS = BoardList().find_autobuild_boards(skip=set())
 PERIPH_BOARDS = BoardList().find_ap_periph_boards(skip=periph_hwdefs_to_skip)
 
 # List of all firmware that isn't AP_Periph
-ALL_VEHICLE_FIRMWARES = ['Sub', 'Plane', 'Blimp', 'Copter', 'Tracker', 'Rover']
+ALL_VEHICLE_FIRMWARES = ['Plane']
 
 
 def check_boards(boards, firmwares, skip: SkippedChecks | None = None):
@@ -81,13 +76,7 @@ def check_sitl(skip: SkippedChecks | None = None):
         skip = SkippedChecks()
     vinfo = VehicleInfo()
     vehicle_name = {
-        'ArduCopter': 'Copter',
-        'Helicopter': 'Copter',
-        'Blimp': 'Blimp',
         'ArduPlane': 'Plane',
-        'Rover': 'Rover',
-        'ArduSub': 'Sub',
-        'AntennaTracker': 'Tracker',
         'sitl_periph_universal': 'AP_Periph'
     }
     directory = os.path.join(

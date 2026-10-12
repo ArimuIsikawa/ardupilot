@@ -5,7 +5,7 @@ WAF = python $(WAF_BINARY) $(WAF_FLAGS)
 
 EXPLICIT_COMMANDS = check check-all clean list_boards
 
-VEHICLES = copter plane rover sub heli
+VEHICLES = plane
 
 BOARD_LIST := $(shell $(WAF) list_boards | head -1)
 
@@ -74,8 +74,8 @@ help:
 	@echo "It's possible to build for a specific vehicle type and board using"
 	@echo "    make BOARD-VEHICLE"
 	@echo ""
-	@echo "For example, to build copter for the Pixracer, use this:"
-	@echo "    make Pixracer-copter"
+	@echo "For example, to build plane for the Pixracer, use this:"
+	@echo "    make Pixracer-plane"
 	@echo ""
 	@echo "Check"
 	@echo "-----"

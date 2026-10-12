@@ -4,11 +4,6 @@ on:
   push:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
-      - 'ArduCopter/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove non SITL HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_ESP32/**'
@@ -45,14 +40,7 @@ on:
       - 'Tools/scripts/CAN/**'
       - 'Tools/scripts/signing/**'
       # Remove other vehicles autotest
-      - 'Tools/autotest/antennatracker.py'
-      - 'Tools/autotest/arducopter.py'
-      - 'Tools/autotest/ardusub.py'
-      - 'Tools/autotest/balancebot.py'
-      - 'Tools/autotest/helicopter.py'
       - 'Tools/autotest/location.txt'
-      - 'Tools/autotest/rover.py'
-      - 'Tools/autotest/sailboat.py'
       - 'Tools/autotest/swarminit.txt'
       # Remove markdown files as irrelevant
       - '**.md'
@@ -80,11 +68,6 @@ on:
   pull_request:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
-      - 'ArduCopter/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove non SITL HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_ESP32/**'
@@ -122,14 +105,7 @@ on:
       - 'Tools/scripts/CAN/**'
       - 'Tools/scripts/signing/**'
       # Remove other vehicles autotest
-      - 'Tools/autotest/antennatracker.py'
-      - 'Tools/autotest/arducopter.py'
-      - 'Tools/autotest/ardusub.py'
-      - 'Tools/autotest/balancebot.py'
-      - 'Tools/autotest/helicopter.py'
       - 'Tools/autotest/location.txt'
-      - 'Tools/autotest/rover.py'
-      - 'Tools/autotest/sailboat.py'
       - 'Tools/autotest/swarminit.txt'
       # Remove markdown files as irrelevant
       - '**.md'

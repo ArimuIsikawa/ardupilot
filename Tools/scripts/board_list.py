@@ -18,15 +18,7 @@ class Board(object):
         self.is_ap_periph = False
         self.toolchain = 'arm-none-eabi'  # FIXME: try to remove this?
         self.hal = None  # filled in below
-        self.autobuild_targets = [
-            'Tracker',
-            'Blimp',
-            'Copter',
-            'Heli',
-            'Plane',
-            'Rover',
-            'Sub',
-        ]
+        self.autobuild_targets = ['Plane']
 
 
 def in_boardlist(boards : Collection[str], board : str) -> bool:
@@ -122,6 +114,11 @@ class BoardList(object):
                     if board.toolchain == 'native':
                         board.toolchain = None
 
+            board.autobuild_targets = [
+                target for target in board.autobuild_targets
+                if target.lower() in {'plane', 'ap_periph'}
+            ]
+
             # toolchain not in hwdef; make up some defaults:
             if not board_toolchain_set:
                 if "Linux" in hwdef_dir:
@@ -158,7 +155,7 @@ class BoardList(object):
                 ret += [line]
         return ret
 
-    def find_autobuild_boards(self, build_target=None, skip : Collection[str] = None):
+    def find_autobuild_boards(self, build_target="Plane", skip : Collection[str] = None):
         ret = []
         for board in self.boards:
             if board.is_ap_periph:

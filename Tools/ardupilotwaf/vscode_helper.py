@@ -22,12 +22,7 @@ H7_DUAL_BANK_LIST = [
 ] # List of H7 boards with dual bank
 
 ELF_NAME_MAPPING = {
-    'copter': 'arducopter',
     'plane': 'arduplane',
-    'rover': 'ardurover',
-    'sub': 'ardusub',
-    'blimp': 'blimp',
-    'antennatracker': 'antennatracker',
     'bootloader': 'AP_Bootloader',
     'AP_Periph': 'AP_Periph',
 }

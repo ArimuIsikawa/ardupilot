@@ -68,19 +68,16 @@ def find_vehicle_parameter_filepath(vehicle_name):
     apm_tools_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../Tools/')
 
     vehicle_name_to_dir_name_map = {
-        "Copter": "ArduCopter",
         "Plane": "ArduPlane",
-        "Tracker": "AntennaTracker",
-        "Sub": "ArduSub",
     }
 
-    # first try ArduCopter/Parameters.cpp
+    # first try the vehicle directory
     for top_dir in apm_path, apm_tools_path:
         path = os.path.join(top_dir, vehicle_name, "Parameters.cpp")
         if os.path.exists(path):
             return path
 
-        # then see if we can map e.g. Copter -> ArduCopter
+        # then try a vehicle alias
         if vehicle_name in vehicle_name_to_dir_name_map:
             path = os.path.join(top_dir, vehicle_name_to_dir_name_map[vehicle_name], "Parameters.cpp")
             if os.path.exists(path):
@@ -163,7 +160,7 @@ vehicle_path = find_vehicle_parameter_filepath(args.vehicle)
 
 basename = os.path.basename(os.path.dirname(vehicle_path))
 path = os.path.normpath(os.path.dirname(vehicle_path))
-reference = basename  # so links don't break we use ArduCopter
+reference = basename  # use the directory name for links
 vehicle = Vehicle(truename, path, reference=reference)
 debug('Found vehicle type %s' % vehicle.name)
 

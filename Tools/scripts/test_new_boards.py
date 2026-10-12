@@ -69,8 +69,6 @@ class TestNewBoards(BuildScriptBase):
         else:
             for t in board.autobuild_targets:
                 t = t.lower()
-                if t == 'tracker':
-                    t = 'antennatracker'
                 self.run_waf([t], show_output=False)
 
     def build_bootloader(self, board : board_list.Board) -> None:

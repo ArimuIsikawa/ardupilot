@@ -10,7 +10,7 @@ find_package(ament_cmake_python REQUIRED)
 # Add custom targets to configure and build ardupilot.
 
 # TODO(srmainwaring): add cache variables for vehicle type, debug etc.
-# set(ARDUPILOT_VEHICLE "copter" CACHE STRING "Vehicle type")
+# set(ARDUPILOT_VEHICLE "plane" CACHE STRING "Vehicle type")
 
 option(ARDUPILOT_DISABLE_NETWORKING "Disable the networking API code" OFF)
 option(ARDUPILOT_DISABLE_SCRIPTING "Disable the scripting API code" OFF)
@@ -63,13 +63,7 @@ add_dependencies(ardupilot_build ardupilot_configure)
 
 # Install executables.
 install(PROGRAMS
-  ${ARDUPILOT_ROOT}/build/sitl/bin/antennatracker
-  ${ARDUPILOT_ROOT}/build/sitl/bin/arducopter
-  ${ARDUPILOT_ROOT}/build/sitl/bin/arducopter-heli
   ${ARDUPILOT_ROOT}/build/sitl/bin/arduplane
-  ${ARDUPILOT_ROOT}/build/sitl/bin/ardurover
-  ${ARDUPILOT_ROOT}/build/sitl/bin/ardusub
-  ${ARDUPILOT_ROOT}/build/sitl/bin/blimp
   DESTINATION bin/
 )
 

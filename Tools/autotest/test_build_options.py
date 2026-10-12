@@ -104,7 +104,7 @@ class TestBuildOptions(object):
 
     @staticmethod
     def all_targets():
-        return ['copter', 'plane', 'rover', 'antennatracker', 'sub', 'blimp']
+        return ['plane']
 
     def progress(self, message):
         print("###### %s" % message, file=sys.stderr)

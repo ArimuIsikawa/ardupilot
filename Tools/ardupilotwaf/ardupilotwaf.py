@@ -134,14 +134,6 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
 ]
 
 def get_legacy_defines(sketch_name, bld):
-    # If we are building heli, we adjust the build directory define so that 
-    # we do not need to actually split heli and copter directories
-    if bld.cmd == 'heli' or 'heli' in bld.targets:
-        return [
-        'APM_BUILD_DIRECTORY=APM_BUILD_Heli',
-        'AP_BUILD_TARGET_NAME="' + sketch_name + '"',
-        ]
-
     return [
         'APM_BUILD_DIRECTORY=APM_BUILD_' + sketch_name,
         'AP_BUILD_TARGET_NAME="' + sketch_name + '"',
@@ -682,8 +674,8 @@ special group "all" selects all programs.
     g.add_option('--upload',
         action='store_true',
         help='''Upload applicable targets to a connected device. Not all
-platforms may support this. Example: `waf copter --upload` means "build
-arducopter and upload it to my board".
+platforms may support this. Example: `waf plane --upload` means "build
+arduplane and upload it to my board".
 ''')
 
     g.add_option('--upload-port',

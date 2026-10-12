@@ -22,34 +22,34 @@ Do not run `waf` with `sudo`!  This leads to permission and environment problems
 There are several commands in the build system for advanced usage, but here we
 list some basic and more used commands as example.
 
-- **Build ArduCopter**
+- **Build ArduPlane**
 
-    Below shows how to build ArduCopter for the Pixhawk2/Cube. Many other boards are
+    Below shows how to build ArduPlane for the Pixhawk2/Cube. Many other boards are
     supported and the next section shows how to get a full list of them.
 
     ```sh
     ./waf configure --board CubeBlack
-    ./waf copter
+    ./waf plane
     ```
 
     The first command should be called only once or when you want to change a
     configuration option. One configuration often used is the `--board` option to
     switch from one board to another one. For example we could switch to
-    SkyViper GPS drone and build again:
+    MatekF405-Wing and build again:
 
     ```sh
-    ./waf configure --board skyviper-v2450
-    ./waf copter
+    ./waf configure --board MatekF405-Wing
+    ./waf plane
     ```
 
-    If building for the bebop2 the binary must be built statically:
+    If building for the Disco the binary must be built statically:
 
     ```sh
-    ./waf configure --board bebop --static
-    ./waf copter
+    ./waf configure --board disco --static
+    ./waf plane
     ```
 
-    The "arducopter" binary should appear in the `build/<board-name>/bin` directory.
+    The "arduplane" binary should appear in the `build/<board-name>/bin` directory.
 
 - **List available boards**
 
@@ -64,14 +64,14 @@ list some basic and more used commands as example.
     Here are some commands to configure waf for commonly used boards:
 
     ```sh
-    ./waf configure --board bebop --static # Bebop or Bebop2
+    ./waf configure --board disco --static # Parrot Disco
     ./waf configure --board edge           # emlid edge
     ./waf configure --board fmuv3          # 3DR Pixhawk 2 boards
     ./waf configure --board navio2         # emlid navio2
     ./waf configure --board Pixhawk1       # Pixhawk1
     ./waf configure --board CubeBlack      # Hex/ProfiCNC Cube Black (formerly known as Pixhawk 2.1)
     ./waf configure --board Pixracer       # Pixracer
-    ./waf configure --board skyviper-v2450 # SkyRocket's SkyViper GPS drone using ChibiOS
+    ./waf configure --board MatekF405-Wing # SkyRocket's MatekF405-Wing using ChibiOS
     ./waf configure --board sitl           # software-in-the-loop simulator
     ./waf configure --board sitl --debug   # software-in-the-loop simulator with debug symbols
 
@@ -82,8 +82,8 @@ list some basic and more used commands as example.
     Here is a list of the most common vehicle build targets:
 
     ```sh
-    ./waf copter                            # All multirotor types
-    ./waf heli                              # Helicopter types
+    ./waf plane                            # All multirotor types
+    ./waf heli                              # Heliplane types
     ./waf plane                             # Fixed wing airplanes including VTOL
     ./waf rover                             # Ground-based rovers and surface boats
     ./waf sub                               # ROV and other submarines
@@ -115,7 +115,7 @@ list some basic and more used commands as example.
     The command below uses the `--targets` option that is explained in the next item.
 
     ```sh
-    ./waf --targets bin/arducopter --upload
+    ./waf --targets bin/arduplane --upload
     ```
 
     For Linux boards you need first to configure the IP of the board you
@@ -130,7 +130,7 @@ list some basic and more used commands as example.
 
     ```sh
     ./waf configure --board navio2 --rsync-dest root@192.168.1.2:/
-    ./waf --target bin/arducopter --upload
+    ./waf --target bin/arduplane --upload
     ```
 
     This allows to set a destination to which the `--upload` option will upload
@@ -142,14 +142,14 @@ list some basic and more used commands as example.
     used by distributors to create .deb, .rpm or other package types:
 
     ```sh
-    ./waf copter
+    ./waf plane
     DESTDIR=/my/temporary/location ./waf install
     ```
 
 - **Use different targets**
 
-    The build commands in the items above use `copter` as argument. This
-    builds all binaries that fall under the "copter" group. See the
+    The build commands in the items above use `plane` as argument. This
+    builds all binaries that fall under the "plane" group. See the
     section [Advanced usage](#advanced-usage) below for more details regarding
     groups.
 
@@ -162,8 +162,8 @@ list some basic and more used commands as example.
     For example, to build only a single binary:
 
     ```bash
-    # Quad frame of ArduCopter
-    ./waf --targets bin/arducopter
+    # ArduPlane (including QuadPlane)
+    ./waf --targets bin/arduplane
 
     # unit test of our math functions
     ./waf --targets tests/test_math
@@ -206,7 +206,7 @@ To build inside the container, prefix your `waf` commands, e.g.:
 
 ```bash
 docker run --rm -it -v $PWD:/ardupilot ardupilot-dev ./waf configure --board=sitl
-docker run --rm -it -v $PWD:/ardupilot ardupilot-dev ./waf copter
+docker run --rm -it -v $PWD:/ardupilot ardupilot-dev ./waf plane
 ```
 
 Alternatively, simply run `docker run --rm -it -v $PWD:/ardupilot ardupilot-dev` to
@@ -279,13 +279,13 @@ which belongs to the main group "bin", will be located at
 #### Main product groups
 
 Those are groups for ardupilot's main products. They contain programs for the
-product they represent. Currently only the "copter" group has more than one
+product they represent. Currently only the "plane" group has more than one
 program - one for each frame type.
 
 The main product groups are:
 
 - antennatracker
-- copter
+- plane
 - plane
 - rover
 
@@ -320,8 +320,8 @@ For less typing, you can use the group name as the command to waf. Examples:
 # Build all examples
 ./waf examples
 
-# Build arducopter binaries
-./waf copter
+# Build arduplane binaries
+./waf plane
 ```
 
 ### Building a specific program
@@ -330,8 +330,8 @@ In order to build a specific program, you just need to pass its path relative
 to `build/<board>/` to the option `--targets`. Example:
 
 ```bash
-# Build arducopter for quad frame
-./waf --targets bin/arducopter
+# Build arduplane for quad frame
+./waf --targets bin/arduplane
 
 # Build vectors unit test
 ./waf --targets tests/test_vectors

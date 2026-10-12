@@ -29,7 +29,4 @@ _ap_bin()
 }
 
 
-complete -F _ap_bin arducopter
 complete -F _ap_bin arduplane
-complete -F _ap_bin ardusub
-complete -F _ap_bin arducopter

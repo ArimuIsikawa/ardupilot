@@ -2,8 +2,6 @@
 
 The SITL_connector function can be used to simplify the connection process. SITL_connector.m uses the TCP/UDP/IP Toolbox 2.0.6 by Peter Rydesäter and is much (10x) faster than the MATLAB functions available with the instrument control toolbox (and free!). However this may require compilation of a mex file, prebuilt mex files are included in most cases they will work without the need to re-compile.
 
-see Copter/SIM_multicopter.m for example usage.
-
 The function is defined as:
 
 ```matlab

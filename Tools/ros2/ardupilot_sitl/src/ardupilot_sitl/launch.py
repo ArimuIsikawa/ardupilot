@@ -523,21 +523,15 @@ class SITLLaunch:
             # Required launch arguments.
             DeclareLaunchArgument(
                 "command",
-                default_value="arducopter",
+                default_value="arduplane",
                 description="Run ArduPilot SITL.",
                 choices=[
-                    "antennatracker",
-                    "arducopter-heli",
-                    "ardurover",
-                    "blimp",
-                    "arducopter",
                     "arduplane",
-                    "ardusub",
                 ],
             ),
             DeclareLaunchArgument(
                 "model",
-                default_value="quad",
+                default_value="plane",
                 description="Set simulation model.",
             ),
             DeclareLaunchArgument(
@@ -566,8 +560,8 @@ class SITLLaunch:
                     [
                         FindPackageShare("ardupilot_sitl"),
                         "config",
-                        "default_params",
-                        "copter.parm",
+                        "models",
+                        "plane.parm",
                     ]
                 ),
                 description="Set path to defaults file.",

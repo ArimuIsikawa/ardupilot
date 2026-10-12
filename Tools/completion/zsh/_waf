@@ -74,12 +74,7 @@ _waf_targets() {
 _waf_cmds() {
   local commands; commands=(
     'AP_Periph:builds AP_Periph programs' \
-    'copter:builds copter programs' \
-    'heli:builds heli programs' \
     'plane:builds plane programs' \
-    'rover:builds rover programs' \
-    'sub:builds sub programs' \
-    'antennatracker:builds antennatracker programs' \
     'tools:builds all programs of tools group' \
     'examples:builds all programs of examples group' \
     'bootloader:builds bootloader programs' \

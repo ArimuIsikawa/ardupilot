@@ -4,8 +4,6 @@ on:
   push:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
-      - 'Blimp/**'
       # remove non SITL HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_ESP32/**'
@@ -70,8 +68,6 @@ on:
   pull_request:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
-      - 'Blimp/**'
       # remove non SITL HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_ESP32/**'
@@ -152,16 +148,10 @@ jobs:
       - name: Build QURT
         run: |
           ./waf configure --board QURT
-          ./waf copter
           ./waf plane
-          ./waf rover
-          cp -a build/QURT/bin/arducopter build/QURT/ArduPilot.so
-          cp -a build/QURT/bin/arducopter build/QURT/ArduPilot_Copter.so
+          cp -a build/QURT/bin/arduplane build/QURT/ArduPilot.so
           cp -a build/QURT/bin/arduplane build/QURT/ArduPilot_Plane.so
-          cp -a build/QURT/bin/ardurover build/QURT/ArduPilot_Rover.so
-          libraries/AP_HAL_QURT/packaging/make_package.sh ArduCopter arducopter
           libraries/AP_HAL_QURT/packaging/make_package.sh ArduPlane arduplane
-          libraries/AP_HAL_QURT/packaging/make_package.sh Rover ardurover
 
       - name: Archive build
         uses: actions/upload-artifact@v6
@@ -169,9 +159,7 @@ jobs:
           name: qurt-binaries
           path: |
             build/QURT/ardupilot
-            build/QURT/ArduPilot_Copter.so
             build/QURT/ArduPilot_Plane.so
-            build/QURT/ArduPilot_Rover.so
             build/QURT/ArduPilot.so
             libraries/AP_HAL_QURT/packaging/*.deb
           retention-days: 7

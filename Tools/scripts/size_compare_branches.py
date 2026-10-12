@@ -13,7 +13,7 @@ AP_FLAKE8_CLEAN
 
 How to use?
 Starting in the ardupilot directory.
-~/ardupilot $ python Tools/scripts/size_compare_branches.py --branch=[PR_BRANCH_NAME] --vehicle=copter
+~/ardupilot $ python Tools/scripts/size_compare_branches.py --branch=[PR_BRANCH_NAME] --vehicle=plane
 
 Output is placed into ELF_DIFF_[VEHICLE_NAME]
 '''
@@ -254,7 +254,7 @@ class SizeCompareBranches(BuildScriptBase):
         if jobs is not None:
             waf_configure_args.extend(["-j", str(jobs)])
 
-        # we can't run `./waf copter blimp plane` without error, so do
+        # we can't run multiple waf vehicle targets without error, so do
         # them one-at-a-time:
         non_bootloader_configure_done : bool = False
         for v in vehicle:
@@ -299,12 +299,7 @@ class SizeCompareBranches(BuildScriptBase):
             else:
                 if board_info.is_ap_periph:
                     continue
-                # Map vehicle name to autobuild target name
-                # antennatracker (waf target) -> Tracker (autobuild target)
-                vehicle_for_autobuild = vehicle
-                if vehicle.lower() == 'antennatracker':
-                    vehicle_for_autobuild = 'tracker'
-                if vehicle_for_autobuild.lower() not in [x.lower() for x in board_info.autobuild_targets]:
+                if vehicle.lower() not in [x.lower() for x in board_info.autobuild_targets]:
                     continue
             vehicles_to_build.append(vehicle)
 

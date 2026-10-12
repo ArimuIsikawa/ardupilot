@@ -1,4 +1,4 @@
-#compdef arducopter arducopter-heli arduplane ardurover ardusub antennatracker
+#compdef arduplane
 #autoload
 
 _ap_bin() {

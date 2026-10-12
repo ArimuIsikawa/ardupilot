@@ -111,9 +111,6 @@ function run_autotest() {
     if [ $c_compiler == "clang" ]; then
         w="$w --check-c-compiler=clang --check-cxx-compiler=clang++"
     fi
-    if [ "$NAME" == "Rover" ]; then
-        w="$w --enable-math-check-indexes"
-    fi
     if [ "x$CI_BUILD_DEBUG" != "x" ]; then
         w="$w --debug"
     fi
@@ -129,46 +126,7 @@ function run_autotest() {
 
 for t in $CI_BUILD_TARGET; do
     # special case for SITL testing in CI
-    if [ "$t" == "sitltest-heli" ]; then
-        run_autotest "Heli" "build.Helicopter" "test.Helicopter"
-        continue
-    fi
     #github actions ci
-    if [ "$t" == "sitltest-copter-tests1a" ]; then
-        run_autotest "Copter" "build.Copter" "test.CopterTests1a"
-        continue
-    fi
-    if [ "$t" == "sitltest-copter-tests1b" ]; then
-        run_autotest "Copter" "build.Copter" "test.CopterTests1b"
-        continue
-    fi
-    if [ "$t" == "sitltest-copter-tests1c" ]; then
-        run_autotest "Copter" "build.Copter" "test.CopterTests1c"
-        continue
-    fi
-    if [ "$t" == "sitltest-copter-tests1d" ]; then
-        run_autotest "Copter" "build.Copter" "test.CopterTests1d"
-        continue
-    fi
-    if [ "$t" == "sitltest-copter-tests1e" ]; then
-        run_autotest "Copter" "build.Copter" "test.CopterTests1e"
-        continue
-    fi
-    if [ "$t" == "sitltest-copter-tests2a" ]; then
-        run_autotest "Copter" "build.Copter" "test.CopterTests2a"
-        continue
-    fi
-    if [ "$t" == "sitltest-copter-tests2b" ]; then
-        run_autotest "Copter" "build.Copter" "test.CopterTests2b"
-        continue
-    fi
-    if [ "$t" == "sitltest-can" ]; then
-        echo "Building SITL Periph GPS"
-        $waf configure --board sitl
-        $waf copter
-        run_autotest "Copter" "build.SITLPeriphUniversal" "test.CAN"
-        continue
-    fi
     if [ "$t" == "sitltest-plane-tests1a" ]; then
         run_autotest "Plane" "build.Plane" "test.PlaneTests1a"
         continue
@@ -183,33 +141,6 @@ for t in $CI_BUILD_TARGET; do
     fi
     if [ "$t" == "sitltest-quadplane" ]; then
         run_autotest "QuadPlane" "build.Plane" "test.QuadPlane"
-        continue
-    fi
-    if [ "$t" == "sitltest-rover" ]; then
-        sudo apt-get update || /bin/true
-        sudo apt-get install -y ppp || /bin/true
-        pppd --help # fail with `command not found` if ppp install failed
-        run_autotest "Rover" "build.Rover" "test.Rover"
-        continue
-    fi
-    if [ "$t" == "sitltest-sailboat" ]; then
-        run_autotest "Rover" "build.Rover" "test.Sailboat"
-        continue
-    fi
-    if [ "$t" == "sitltest-tracker" ]; then
-        run_autotest "Tracker" "build.Tracker" "test.Tracker"
-        continue
-    fi
-    if [ "$t" == "sitltest-balancebot" ]; then
-        run_autotest "BalanceBot" "build.Rover" "test.BalanceBot"
-        continue
-    fi
-    if [ "$t" == "sitltest-sub" ]; then
-        run_autotest "Sub" "build.Sub" "test.Sub"
-        continue
-    fi
-    if [ "$t" == "sitltest-blimp" ]; then
-        run_autotest "Blimp" "build.Blimp" "test.Blimp"
         continue
     fi
 
@@ -323,13 +254,13 @@ for t in $CI_BUILD_TARGET; do
         echo "Building KakuteF7Mini"
         $waf configure --Werror --board KakuteF7Mini
         $waf clean
-        $waf copter
+        $waf plane
 
         # test bi-directional dshot build and smallest flash
         echo "Building KakuteF7"
         $waf configure --Werror --board KakuteF7
         $waf clean
-        $waf copter
+        $waf plane
         continue
     fi
 
@@ -337,7 +268,7 @@ for t in $CI_BUILD_TARGET; do
         echo "Building Durandal"
         $waf configure --board Durandal
         $waf clean
-        $waf copter
+        $waf plane
         echo "Building CPUInfo"
         $waf --target=tool/CPUInfo
 
@@ -345,7 +276,7 @@ for t in $CI_BUILD_TARGET; do
         echo "Building SPRacingH7"
         $waf configure --Werror --board SPRacingH7
         $waf clean
-        $waf copter
+        $waf plane
         continue
     fi
 
@@ -353,7 +284,7 @@ for t in $CI_BUILD_TARGET; do
         echo "Building Durandal"
         $waf configure --board Durandal --debug
         $waf clean
-        $waf copter
+        $waf plane
         continue
     fi
 
@@ -361,7 +292,6 @@ for t in $CI_BUILD_TARGET; do
         echo "Building CubeOrange-ODID"
         $waf configure --board CubeOrange-ODID
         $waf clean
-        $waf copter
         $waf plane
         continue
     fi
@@ -370,7 +300,7 @@ for t in $CI_BUILD_TARGET; do
         echo "Building CubeOrange-PPP"
         $waf configure --board CubeOrange --enable-PPP
         $waf clean
-        $waf copter
+        $waf plane
         continue
     fi
 
@@ -378,13 +308,11 @@ for t in $CI_BUILD_TARGET; do
         echo "Building CubeOrange with EKF2 enabled"
         $waf configure --board CubeOrange --enable-EKF2
         $waf clean
-        $waf copter
+        $waf plane
         continue
     fi
 
     if [ "$t" == "SOHW" ]; then
-        echo "Building CubeOrange-SOHW"
-        Tools/scripts/sitl-on-hardware/sitl-on-hw.py --board CubeOrange --vehicle copter --simclass MultiCopter
         echo "Building 6X-SOHW"
         Tools/scripts/sitl-on-hardware/sitl-on-hw.py --board Pixhawk6X --vehicle plane --simclass Plane --frame plane-3d
         continue
@@ -417,7 +345,6 @@ for t in $CI_BUILD_TARGET; do
         echo "Building with DDS support on a STM32H7"
         $waf configure --board Durandal --enable-DDS
         $waf clean
-        $waf copter
         $waf plane
         continue
     fi
@@ -426,7 +353,6 @@ for t in $CI_BUILD_TARGET; do
         echo "Building with DDS support on SITL"
         $waf configure --board sitl --enable-DDS
         $waf clean
-        $waf copter
         $waf plane
         $waf tests
         continue
@@ -451,16 +377,16 @@ for t in $CI_BUILD_TARGET; do
     if [ "$t" == "navigator" ]; then
         echo "Building navigator"
         $waf configure --board navigator --toolchain=arm-linux-musleabihf
-        $waf sub --static
-        ./Tools/scripts/firmware_version_decoder.py -f build/navigator/bin/ardusub --expected-hash $GIT_VERSION
+        $waf plane --static
+        ./Tools/scripts/firmware_version_decoder.py -f build/navigator/bin/arduplane --expected-hash $GIT_VERSION
         continue
     fi
 
     if [ "$t" == "navigator64" ]; then
         echo "Building navigator64"
         $waf configure --board navigator64 --toolchain=aarch64-linux-gnu
-        $waf sub
-        ./Tools/scripts/firmware_version_decoder.py -f build/navigator64/bin/ardusub --expected-hash $GIT_VERSION
+        $waf plane
+        ./Tools/scripts/firmware_version_decoder.py -f build/navigator64/bin/arduplane --expected-hash $GIT_VERSION
         continue
     fi
 
@@ -500,7 +426,7 @@ for t in $CI_BUILD_TARGET; do
         python3 -m pip install pymonocypher==3.1.3.2 --progress-bar off --cache-dir /tmp/pip-cache
         ./Tools/scripts/signing/generate_keys.py testkey
         $waf configure --board CubeOrange-ODID --signed-fw --private-key testkey_private_key.dat
-        $waf copter
+        $waf plane
         $waf configure --board MatekL431-DShot --signed-fw --private-key testkey_private_key.dat
         $waf AP_Periph
         ./Tools/scripts/build_bootloaders.py --signing-key testkey_public_key.dat CubeOrange-ODID
@@ -547,13 +473,11 @@ for t in $CI_BUILD_TARGET; do
              --no-disable-in-turn \
              --no-enable-in-turn \
              --board=CubeOrange \
-             --build-targets=copter \
              --build-targets=plane
         echo "Checking all/none options in build_options.py work"
         time ./Tools/autotest/test_build_options.py \
              --no-disable-in-turn \
              --no-enable-in-turn \
-             --build-targets=copter \
              --build-targets=plane
         echo "Checking building with logging disabled works"
         echo "define HAL_LOGGING_ENABLED 0" >/tmp/extra.hwdef
@@ -561,19 +485,18 @@ for t in $CI_BUILD_TARGET; do
              --board=CubeOrange \
              --extra-hwdef=/tmp/extra.hwdef
         time ./waf plane
-        time ./waf copter
         continue
     fi
 
     if [ "$t" == "param_parse" ]; then
-        for v in Rover AntennaTracker ArduCopter ArduPlane ArduSub Blimp AP_Periph; do
+        for v in ArduPlane AP_Periph; do
             python3 Tools/autotest/param_metadata/param_parse.py --vehicle $v
         done
         continue
     fi
 
     if [ "$t" == "logger_metadata" ]; then
-        for v in Rover Tracker Copter Plane Sub Blimp; do
+        for v in Plane; do
             python3 Tools/autotest/logger_metadata/parse.py --vehicle $v
         done
         continue

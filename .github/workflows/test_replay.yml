@@ -4,12 +4,7 @@ on:
   push:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
-      - 'ArduCopter/**'
       - 'ArduPlane/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove non SITL HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_ESP32/**'
@@ -73,12 +68,7 @@ on:
   pull_request:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
-      - 'ArduCopter/**'
       - 'ArduPlane/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove non SITL HAL
       - 'libraries/AP_HAL_ChibiOS/**'
       - 'libraries/AP_HAL_ESP32/**'

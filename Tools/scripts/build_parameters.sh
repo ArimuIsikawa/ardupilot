@@ -41,15 +41,4 @@ generate_parameters() {
 }
 
 generate_parameters ArduPlane
-
-generate_parameters ArduCopter
-
-generate_parameters Rover
-
-generate_parameters ArduSub
-
-generate_parameters AntennaTracker
-
 generate_parameters AP_Periph
-
-generate_parameters Blimp

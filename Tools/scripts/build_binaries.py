@@ -176,9 +176,6 @@ is bob we will attempt to checkout bob-AVR'''
             vtag = "master"
         else:
             tagvehicle = vehicle
-            if tagvehicle == "Rover":
-                # FIXME: Rover tags in git still named APMrover2 :-(
-                tagvehicle = "APMrover2"
             vtag = "%s-%s" % (tagvehicle, ctag)
 
         branches = []
@@ -510,8 +507,8 @@ is bob we will attempt to checkout bob-AVR'''
                     self.progress("Not extracting features as (%s) does not exist" % (ef_path,))
 
                 # only rename the elf if we have have other files to
-                # copy.  So linux gets "arducopter" and stm32 gets
-                # "arducopter.elf"
+                # copy.  So linux gets "arduplane" and stm32 gets
+                # "arduplane.elf"
                 target_elf_filename = os.path.basename(bare_path)
                 if len(files_to_copy) > 0:
                     target_elf_filename += ".elf"
@@ -584,19 +581,6 @@ is bob we will attempt to checkout bob-AVR'''
     def AP_Periph_boards(self):
         return AP_PERIPH_BOARDS
 
-    def build_arducopter(self, tag):
-        '''build Copter binaries'''
-
-        boards = []
-        boards.extend(["aerofc-v1"])
-        boards.extend(self.board_list.find_autobuild_boards('Copter'))
-        self.build_vehicle(tag,
-                           "ArduCopter",
-                           boards,
-                           "Copter",
-                           "arducopter",
-                           frames=[None, "heli"])
-
     def build_arduplane(self, tag):
         '''build Plane binaries'''
         boards = self.board_list.find_autobuild_boards('Plane')[:]
@@ -606,30 +590,6 @@ is bob we will attempt to checkout bob-AVR'''
                            "Plane",
                            "arduplane")
 
-    def build_antennatracker(self, tag):
-        '''build Tracker binaries'''
-        self.build_vehicle(tag,
-                           "AntennaTracker",
-                           self.board_list.find_autobuild_boards('Tracker')[:],
-                           "AntennaTracker",
-                           "antennatracker")
-
-    def build_rover(self, tag):
-        '''build Rover binaries'''
-        self.build_vehicle(tag,
-                           "Rover",
-                           self.board_list.find_autobuild_boards('Rover')[:],
-                           "Rover",
-                           "ardurover")
-
-    def build_ardusub(self, tag):
-        '''build Sub binaries'''
-        self.build_vehicle(tag,
-                           "ArduSub",
-                           self.board_list.find_autobuild_boards('Sub')[:],
-                           "Sub",
-                           "ardusub")
-
     def build_AP_Periph(self, tag):
         '''build AP_Periph binaries'''
         boards = self.AP_Periph_boards()
@@ -638,14 +598,6 @@ is bob we will attempt to checkout bob-AVR'''
                            boards,
                            "AP_Periph",
                            "AP_Periph")
-
-    def build_blimp(self, tag):
-        '''build Blimp binaries'''
-        self.build_vehicle(tag,
-                           "Blimp",
-                           self.board_list.find_autobuild_boards('Blimp')[:],
-                           "Blimp",
-                           "blimp")
 
     def generate_manifest(self):
         '''generate manigest files for GCS to download'''
@@ -730,13 +682,8 @@ is bob we will attempt to checkout bob-AVR'''
 
         for tag in self.tags:
             t0 = time.time()
-            self.build_arducopter(tag)
             self.build_arduplane(tag)
-            self.build_rover(tag)
-            self.build_antennatracker(tag)
-            self.build_ardusub(tag)
             self.build_AP_Periph(tag)
-            self.build_blimp(tag)
             self.history.record_run(githash, tag, t0, time.time()-t0)
 
         if os.path.exists(self.tmpdir):

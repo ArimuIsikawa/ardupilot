@@ -18,14 +18,10 @@ cd /cygdrive/c/work
 
     ./waf configure --board sitl
 
-    python3 waf -j4 copter plane rover heli sub
+    python3 waf -j4 plane
 
     # map to the names that MissionPlanner expects
-    cp /cygdrive/c/work/build/sitl/bin/ardurover.exe /cygdrive/c/work/sitl/Rover.elf
     cp /cygdrive/c/work/build/sitl/bin/arduplane.exe /cygdrive/c/work/sitl/ArduPlane.elf
-    cp /cygdrive/c/work/build/sitl/bin/arducopter.exe /cygdrive/c/work/sitl/ArduCopter.elf
-    cp /cygdrive/c/work/build/sitl/bin/arducopter-heli.exe /cygdrive/c/work/sitl/ArduHeli.elf
-    cp /cygdrive/c/work/build/sitl/bin/ardusub.exe /cygdrive/c/work/sitl/ArduSub.elf
 
     cp /usr/i686-pc-cygwin/sys-root/usr/bin/*.dll /cygdrive/c/work/sitl/
 

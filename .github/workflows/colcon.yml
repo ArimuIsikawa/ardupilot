@@ -4,10 +4,6 @@ on:
   push:
     paths-ignore:
       # remove not tests vehicles
-      - 'AntennaTracker/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove esp32 HAL
       - 'libraries/AP_HAL_ESP32/**'
       # remove non SITL directories
@@ -68,10 +64,6 @@ on:
   pull_request:
     paths-ignore:
       # remove not tests vehicles
-      - 'AntennaTracker/**'
-      - 'ArduSub/**'
-      - 'Rover/**'
-      - 'Blimp/**'
       # remove esp32 HAL
       - 'libraries/AP_HAL_ESP32/**'
       # remove non SITL directories
@@ -200,7 +192,7 @@ jobs:
         run: |
           source /opt/ros/humble/setup.bash
           PATH="/tmp/Micro-XRCE-DDS-Gen/scripts:$PATH"
-          colcon build --packages-up-to ardupilot_dds_tests --cmake-args -DBUILD_TESTING=ON
+          colcon build --packages-up-to ardupilot_sitl --cmake-args -DBUILD_TESTING=ON
       - name: Test with colcon
         shell: 'bash'
         run: |

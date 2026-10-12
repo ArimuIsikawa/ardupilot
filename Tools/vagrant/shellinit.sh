@@ -18,10 +18,10 @@ esac
 export PATH=$APMROOT/Tools/autotest:$PATH
 export PATH=/usr/lib/ccache:$PATH
 
-cd $APMROOT/ArduCopter
+cd $APMROOT/ArduPlane
 
-echo "Ardupilot environment ready.  Run 'sim_vehicle.py' to start simulating an arducopter instance."
+echo "Ardupilot environment ready.  Run 'sim_vehicle.py' to start simulating an arduplane instance."
 echo "To build for fmuv2:"
 echo "  cd /vagrant"
 echo "  ./waf configure --board=Pixhawk1"
-echo "  ./waf build --target=bin/arducopter"
+echo "  ./waf build --target=bin/arduplane"

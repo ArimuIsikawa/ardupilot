@@ -4,11 +4,7 @@ on:
   push:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
       - 'ArduPlane/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove non chibios HAL
       - 'libraries/AP_HAL_Linux/**'
       - 'libraries/AP_HAL_ESP32/**'
@@ -61,11 +57,7 @@ on:
   pull_request:
     paths-ignore:
       # remove other vehicles
-      - 'AntennaTracker/**'
       - 'ArduPlane/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove non chibios HAL
       - 'libraries/AP_HAL_Linux/**'
       - 'libraries/AP_HAL_ESP32/**'

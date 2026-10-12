@@ -265,7 +265,7 @@ def kill_tasks():
     if cmd_opts.coverage:
         import psutil
         for proc in psutil.process_iter(['pid', 'name', 'environ']):
-            if proc.name() not in ["arducopter", "ardurover", "arduplane", "ardusub", "antennatracker"]:
+            if proc.name() not in ["arduplane"]:
                 # only kill vehicle that way
                 continue
             if os.environ['SIM_VEHICLE_SESSION'] not in proc.environ().get('SIM_VEHICLE_SESSION'):
@@ -285,18 +285,11 @@ def kill_tasks():
             'JSBSim',
             'lt-JSBSim',
             'ArduPlane.elf',
-            'ArduCopter.elf',
-            'ArduSub.elf',
-            'Rover.elf',
-            'AntennaTracker.elf',
             'JSBSIm.exe',
             'MAVProxy.exe',
             'runsim.py',
-            'AntennaTracker.elf',
             'scrimmage',
-            'ardurover',
             'arduplane',
-            'arducopter'
         }
         for vehicle in vinfo.options:
             for frame in vinfo.options[vehicle]["frames"]:
@@ -351,9 +344,6 @@ def do_build(opts, frame_options):
 
     if opts.coverage:
         cmd_configure.append("--coverage")
-
-    if opts.enable_onvif and 'antennatracker' in frame_options["waf_target"]:
-        cmd_configure.append("--enable-onvif")
 
     if opts.OSD:
         cmd_configure.append("--enable-sfml")
@@ -648,37 +638,6 @@ def run_in_terminal_window(name, cmd, **kw):
         subprocess.Popen(runme, **kw)
 
 
-tracker_serial0 = None  # blemish
-
-
-def start_antenna_tracker(opts):
-    """Compile and run the AntennaTracker, add tracker to mavproxy"""
-
-    global tracker_serial0
-    progress("Preparing antenna tracker")
-    tracker_home = find_location_by_name(opts.tracker_location)
-    vehicledir = os.path.join(autotest_dir, "../../" + "AntennaTracker")
-    options = vinfo.options["AntennaTracker"]
-    tracker_default_frame = options["default_frame"]
-    tracker_frame_options = options["frames"][tracker_default_frame]
-    do_build(opts, tracker_frame_options)
-    tracker_instance = 1
-    oldpwd = os.getcwd()
-    os.chdir(vehicledir)
-    tracker_serial0 = "tcp:127.0.0.1:" + str(5760 + 10 * tracker_instance)
-    binary_basedir = "build/sitl"
-    exe = os.path.join(root_dir,
-                       binary_basedir,
-                       "bin/antennatracker")
-    run_in_terminal_window("AntennaTracker",
-                           ["nice",
-                            exe,
-                            "-I" + str(tracker_instance),
-                            "--model=tracker",
-                            "--home=" + ",".join([str(x) for x in tracker_home])])
-    os.chdir(oldpwd)
-
-
 def start_CAN_Periph(opts, frame_info):
     """Compile and run the sitl_periph"""
 
@@ -933,14 +892,6 @@ def start_mavproxy(opts, stuff):
         if stuff["sitl-port"] and not opts.no_rcin:
             cmd.extend(["--sitl", "127.0.0.1:" + str(5501 + 10 * i)])
 
-    if opts.tracker:
-        cmd.extend(["--load-module", "tracker"])
-        # tracker_serial0 is set when we start the tracker...
-        extra_cmd += ("module load map;"
-                      "tracker set port %s; "
-                      "tracker start; "
-                      "tracker arm;" % (tracker_serial0,))
-
     if opts.mavlink_gimbal:
         cmd.extend(["--load-module", "gimbal"])
 
@@ -1041,15 +992,9 @@ def generate_frame_help():
     return ret
 
 
-# map from some vehicle aliases back to directory names.  APMrover2
-# was the old name / directory name for Rover.
+# Map vehicle aliases back to directory names.
 vehicle_map = {
-    "APMrover2": "Rover",
-    "Copter": "ArduCopter",
     "Plane": "ArduPlane",
-    "Sub": "ArduSub",
-    "Blimp" : "Blimp",
-    "Rover": "Rover",
 }
 # add lower-case equivalents too
 for k in list(vehicle_map.keys()):
@@ -1195,13 +1140,6 @@ group_sim.add_option("", "--callgrind",
                      action='store_true',
                      default=False,
                      help="enable valgrind for performance analysis (slow!!)")
-group_sim.add_option("-T", "--tracker",
-                     action='store_true',
-                     default=False,
-                     help="start an antenna tracker instance")
-group_sim.add_option("", "--enable-onvif",
-                     action="store_true",
-                     help="enable onvif camera control sim using AntennaTracker")
 group_sim.add_option("", "--can-peripherals",
                      action='store_true',
                      default=False,
@@ -1255,10 +1193,6 @@ group_sim.add_option("-S", "--speedup",
                      default=1,
                      type='int',
                      help="set simulation speedup (1 for wall clock time)")
-group_sim.add_option("-t", "--tracker-location",
-                     default='CMAC_PILOTSBOX',
-                     type='string',
-                     help="set antenna tracker start location")
 group_sim.add_option("-w", "--wipe-eeprom",
                      action='store_true',
                      default=False, help="wipe EEPROM and reload parameters")
@@ -1526,7 +1460,7 @@ if cmd_opts.vehicle not in vinfo.options:
     progress('''
 ** Is (%s) really your vehicle type?
 Perhaps you could try -v %s
-You could also try changing directory to e.g. the ArduCopter subdirectory
+You could also try changing directory to e.g. the ArduPlane subdirectory
 ''' % (cmd_opts.vehicle, vehicle_options_string))
     sys.exit(1)
 
@@ -1558,8 +1492,6 @@ else:
 if cmd_opts.instance == 0:
     kill_tasks()
 
-if cmd_opts.tracker:
-    start_antenna_tracker(cmd_opts)
 
 if cmd_opts.can_peripherals or frame_infos.get('periph_params_filename', None) is not None:
     start_CAN_Periph(cmd_opts, frame_infos)
@@ -1647,7 +1579,7 @@ if cmd_opts.delay_start:
     time.sleep(float(cmd_opts.delay_start))
 
 tmp = None
-if cmd_opts.frame in ['scrimmage-plane', 'scrimmage-copter']:
+if cmd_opts.frame == 'scrimmage-plane':
     # import only here so as to avoid jinja dependency in whole script
     from jinja2 import Environment, FileSystemLoader
     from tempfile import mkstemp

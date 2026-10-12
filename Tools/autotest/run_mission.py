@@ -32,8 +32,6 @@ class RunMission(vehicle_test_suite.TestSuite):
         path = self.binary.lower()
         if "plane" in path:
             return "ArduPlane"
-        if "copter" in path:
-            return "ArduCopter"
         raise ValueError("Can't determine vehicleinfo_key from binary path")
 
     def run(self):

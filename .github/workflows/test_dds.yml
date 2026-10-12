@@ -4,10 +4,6 @@ on:
   push:
     paths-ignore:
       # remove not tests vehicles
-      - 'AntennaTracker/**'
-      - 'ArduSub/**'
-      - 'Blimp/**'
-      - 'Rover/**'
       # remove esp32 HAL
       - 'libraries/AP_HAL_ESP32/**'
       # remove non SITL directories
@@ -68,10 +64,6 @@ on:
   pull_request:
     paths-ignore:
       # remove not tests vehicles
-      - 'AntennaTracker/**'
-      - 'ArduSub/**'
-      - 'Rover/**'
-      - 'Blimp/**'
       # remove esp32 HAL
       - 'libraries/AP_HAL_ESP32/**'
       # remove non SITL directories

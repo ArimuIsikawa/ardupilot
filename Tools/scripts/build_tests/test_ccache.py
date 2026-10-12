@@ -38,7 +38,7 @@ def ccache_stats():
 
 def build_board(boardname):
     subprocess.run(["./waf", "configure", "--board", boardname, '--disable-networking'])
-    subprocess.run(["./waf", "clean", "copter"])
+    subprocess.run(["./waf", "clean", "plane"])
 
 
 def main() -> None:

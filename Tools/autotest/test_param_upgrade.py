@@ -39,42 +39,17 @@ class TestParamUpgradeTestSuite(vehicle_test_suite.TestSuite):
     def __init__(self, binary):
         super(TestParamUpgradeTestSuite, self).__init__(binary)
 
-    def sysid_thismav(self):
-        if "antennatracker" in self.binary:
-            return 2
-        return super(TestParamUpgradeTestSuite, self).sysid_thismav()
-
     def vehicleinfo_key(self):
         '''magically guess vehicleinfo_key from filepath'''
         path = self.binary.lower()
-        if "blimp" in path:
-            return "Blimp"
-        if "copter" in path:
-            return "ArduCopter"
         if "plane" in path:
             return "ArduPlane"
-        if "rover" in path:
-            return "Rover"
-        if "sub" in path:
-            return "ArduSub"
-        if "tracker" in path:
-            return "AntennaTracker"
         raise ValueError(f"Can't determine vehicleinfo_key from binary path {path}")
 
     def model(self):
         path = self.binary.lower()
-        if "blimp" in path:
-            return "blimp"
-        if "copter" in path:
-            return "X"
         if "plane" in path:
             return "quadplane"
-        if "rover" in path:
-            return "rover"
-        if "sub" in path:
-            return "vectored"
-        if "tracker" in path:
-            return "tracker"
         raise ValueError(f"Can't determine model from binary path {path}")
 
 
@@ -236,10 +211,6 @@ class TestParamUpgradeForVehicle():
 
     def build_target_name(self, vehicle):
         binary_name = vehicle
-        if binary_name == 'heli':
-            binary_name = 'arducopter-heli'
-        if binary_name == 'rover':
-            binary_name = 'ardurover'
         return f"bin/{binary_name}"
 
     def run_eedump(self):
@@ -317,13 +288,7 @@ class TestParamUpgrade():
     def all_vehicles(self):
         return [
             # 'AP_Periph',
-            'arducopter',
             'arduplane',
-            'antennatracker',
-            'heli',
-            'rover',
-            'blimp',
-            'ardusub',
         ]
 
     def run(self):
