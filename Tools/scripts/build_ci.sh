@@ -378,7 +378,7 @@ for t in $CI_BUILD_TARGET; do
         echo "Building navigator"
         $waf configure --board navigator --toolchain=arm-linux-musleabihf
         $waf plane --static
-        ./Tools/scripts/firmware_version_decoder.py -f build/navigator/bin/arduplane --expected-hash $GIT_VERSION
+        ./Tools/scripts/firmware_version_decoder.py -f build/navigator/bin/ardutailsitter --expected-hash $GIT_VERSION
         continue
     fi
 
@@ -386,7 +386,7 @@ for t in $CI_BUILD_TARGET; do
         echo "Building navigator64"
         $waf configure --board navigator64 --toolchain=aarch64-linux-gnu
         $waf plane
-        ./Tools/scripts/firmware_version_decoder.py -f build/navigator64/bin/arduplane --expected-hash $GIT_VERSION
+        ./Tools/scripts/firmware_version_decoder.py -f build/navigator64/bin/ardutailsitter --expected-hash $GIT_VERSION
         continue
     fi
 

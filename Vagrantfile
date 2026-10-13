@@ -12,7 +12,7 @@
 # time rsync -aPH /vagrant/ $HOME/ardupilot  # real	50s
 # time (cd $HOME/ardupilot && ./waf configure --board=fmuv2 && ./waf build --target=bin/ardusub) # ~4 minutes
 # time (cd $HOME/ardupilot && ./waf configure --board=fmuv3 && ./waf build --target=bin/ardusub) # ~4 minutes (after building fmuv2)
-# time (cd $HOME/ardupilot && ./waf configure --board=navio2 && ./waf build --target=bin/arduplane)  # ~6 minutes
+# time (cd $HOME/ardupilot && ./waf configure --board=navio2 && ./waf build --target=bin/ardutailsitter)  # ~6 minutes
 # time (cd $HOME/ardupilot && ./Tools/autotest/sim_vehicle.py --map --console -v ArduPlane -f jsbsim) # should test JSBSim
 # time (cd $HOME/ardupilot && ./Tools/autotest/autotest.py build.Rover test.Rover)
 

@@ -177,7 +177,7 @@ jobs:
           fi
           PATH="/github/home/.local/bin:$PATH"
           ./waf configure --board sitl --debug
-          ./waf build --target bin/arduplane
+          ./waf build --target bin/ardutailsitter
           ccache -s
           ccache -z
 

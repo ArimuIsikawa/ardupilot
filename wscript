@@ -709,7 +709,7 @@ def list_ap_periph_boards(ctx):
 def ap_periph_boards(ctx):
     return boards.get_ap_periph_boards()
 
-vehicles = ['plane']
+vehicles = ['tailsitter']
 
 def generate_tasklist(ctx, do_print=True):
     boardlist = boards.get_boards_names()
@@ -969,7 +969,7 @@ ardupilotwaf.build_command('check-all',
     doc='shortcut for `waf check --alltests`',
 )
 
-for name in (vehicles + ['bootloader','iofirmware','AP_Periph','replay']):
+for name in (vehicles + ['plane','bootloader','iofirmware','AP_Periph','replay']):
     ardupilotwaf.build_command(name,
         program_group_list=name,
         doc='builds %s programs' % name,

@@ -149,9 +149,9 @@ jobs:
         run: |
           ./waf configure --board QURT
           ./waf plane
-          cp -a build/QURT/bin/arduplane build/QURT/ArduPilot.so
-          cp -a build/QURT/bin/arduplane build/QURT/ArduPilot_Plane.so
-          libraries/AP_HAL_QURT/packaging/make_package.sh ArduPlane arduplane
+          cp -a build/QURT/bin/ardutailsitter build/QURT/ArduPilot.so
+          cp -a build/QURT/bin/ardutailsitter build/QURT/ArduPilot_Plane.so
+          libraries/AP_HAL_QURT/packaging/make_package.sh ArduPlane ardutailsitter
 
       - name: Archive build
         uses: actions/upload-artifact@v6

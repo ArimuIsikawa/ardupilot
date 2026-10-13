@@ -33,7 +33,7 @@ cd /data/ftp/internal_000/ardupilot
  echo "step4"
 
  while :; do
-    echo "$(date) Starting arduplane"
-   ./arduplane -A udp:192.168.42.255:14550:bcast -B /dev/ttyPA1 -C udp:192.168.43.255:14550:bcast --module-directory modules
+    echo "$(date) Starting ardutailsitter"
+   ./ardutailsitter -A udp:192.168.42.255:14550:bcast -B /dev/ttyPA1 -C udp:192.168.43.255:14550:bcast --module-directory modules
  done
 ) >> start_ardupilot.log 2>&1

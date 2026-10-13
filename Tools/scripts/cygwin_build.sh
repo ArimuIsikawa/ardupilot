@@ -30,7 +30,7 @@ WAF_OPTIONS="-j8"
 ) | tee artifacts/build.txt
 
 # artifacts are expected to have .exe as they are executable
-cp -v build/sitl/bin/arduplane artifacts/ArduPlane.elf.exe
+cp -v build/sitl/bin/ardutailsitter artifacts/ArduTailSitter.elf.exe
 
 # Find all cyg*.dll files returned by cygcheck for each exe in artifacts
 # and copy them over

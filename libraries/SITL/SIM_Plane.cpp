@@ -93,6 +93,14 @@ Plane::Plane(const char *frame_str) :
         ground_behavior = GROUND_BEHAVIOR_TAILSITTER;
         thrust_scale *= 1.5;
     }
+    if (strstr(frame_str, "-tailsitter-dual")) {
+        dual_motor_tailsitter = true;
+        if (colon == nullptr) {
+            // A balanced flying wing.
+            coefficient.CGOffset.zero();
+            coefficient.c_m_0 = 0;
+        }
+    }
     if (strstr(frame_str, "-steering")) {
         have_steering = true;
     }
@@ -273,6 +281,7 @@ float Plane::dragCoeff(float alpha) const
 Vector3f Plane::getTorque(float inputAileron, float inputElevator, float inputRudder, float inputThrust, const Vector3f &force) const
 {
     float alpha = angle_of_attack;
+    float effective_beta = beta;
 
 	//calculate aerodynamic torque
     float effective_airspeed = airspeed;
@@ -285,6 +294,15 @@ Vector3f Plane::getTorque(float inputAileron, float inputElevator, float inputRu
 
         // reduce effective angle of attack as thrust increases
         alpha *= constrain_float(1 - inputThrust, 0, 1);
+    }
+    if (dual_motor_tailsitter) {
+        // Propeller flow at the elevons scales with the square root of thrust.
+        Vector3f flow = velocity_air_bf;
+        flow.x += sqrtf(MAX(inputThrust, 0.0f)) * 20;
+        effective_airspeed = flow.length();
+        alpha = atan2f(flow.z, flow.x);
+        // Static sideslip moments use the free stream, not the axial propeller flow.
+        effective_beta = 0;
     }
     
     const float s = coefficient.s;
@@ -325,12 +343,17 @@ Vector3f Plane::getTorque(float inputAileron, float inputElevator, float inputRu
 	}
 	else
 	{
-		la = qbar*b*(c_l_0 + c_l_b*beta + c_l_p*b*p/(2*effective_airspeed) + c_l_r*b*r/(2*effective_airspeed) + c_l_deltaa*inputAileron + c_l_deltar*inputRudder);
+        la = qbar*b*(c_l_0 + c_l_b*effective_beta + c_l_p*b*p/(2*effective_airspeed) + c_l_r*b*r/(2*effective_airspeed) + c_l_deltaa*inputAileron + c_l_deltar*inputRudder);
 		ma = qbar*c*(c_m_0 + c_m_a*alpha + c_m_q*c*q/(2*effective_airspeed) + c_m_deltae*inputElevator);
-		na = qbar*b*(c_n_0 + c_n_b*beta + c_n_p*b*p/(2*effective_airspeed) + c_n_r*b*r/(2*effective_airspeed) + c_n_deltaa*inputAileron + c_n_deltar*inputRudder);
+        na = qbar*b*(c_n_0 + c_n_b*effective_beta + c_n_p*b*p/(2*effective_airspeed) + c_n_r*b*r/(2*effective_airspeed) + c_n_deltaa*inputAileron + c_n_deltar*inputRudder);
 	}
 
 
+    if (dual_motor_tailsitter) {
+        const float side_pressure = 0.5f * rho * sq(airspeed) * s * b;
+        la += side_pressure * c_l_b * beta;
+        na += side_pressure * c_n_b * beta;
+    }
 	// Add torque to force misalignment with CG
 	// r x F, where r is the distance from CoG to CoL
 	la +=  CGOffset.y * force.z - CGOffset.z * force.y;
@@ -406,7 +429,14 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         elevator = -elevator;
         rudder = -rudder;
     }
-    if (elevons) {
+    if (dual_motor_tailsitter) {
+        // Left/right elevons on outputs 1/2, with positive deflection giving nose-up pitch.
+        const float left = aileron;
+        const float right = elevator;
+        aileron = (right - left) * 0.5f;
+        elevator = (right + left) * 0.5f;
+        rudder = 0;
+    } else if (elevons) {
         // fake an elevon plane
         float ch1 = aileron;
         float ch2 = elevator;
@@ -444,7 +474,17 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     }
     //printf("Aileron: %.1f elevator: %.1f rudder: %.1f\n", aileron, elevator, rudder);
 
-    if (reverse_thrust) {
+    float differential_thrust = 0;
+    if (dual_motor_tailsitter) {
+        // Each fixed motor provides half the total thrust, at a quarter-span from the centreline.
+        const float left = filtered_servo_range(input, 4);
+        const float right = filtered_servo_range(input, 5);
+        throttle = (left + right) * 0.5f;
+        differential_thrust = (left - right) * 0.5f * thrust_scale;
+        motor_mask |= (1U << 4) | (1U << 5);
+        rpm[4] = left * 7000;
+        rpm[5] = right * 7000;
+    } else if (reverse_thrust) {
         throttle = filtered_servo_angle(input, 2);
     } else {
         throttle = filtered_servo_range(input, 2);
@@ -474,6 +514,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     
     Vector3f force = getForce(aileron, elevator, rudder);
     rot_accel = getTorque(aileron, elevator, rudder, thrust, force);
+    rot_accel.z += differential_thrust * coefficient.b * 0.25f;
 
     if (have_launcher) {
         /*
@@ -495,8 +536,10 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     }
     
     // simulate engine RPM
-    motor_mask |= (1U<<2);
-    rpm[2] = thrust * 7000;
+    if (!dual_motor_tailsitter) {
+        motor_mask |= (1U<<2);
+        rpm[2] = thrust * 7000;
+    }
     
     // scale thrust to newtons
     thrust *= thrust_scale;

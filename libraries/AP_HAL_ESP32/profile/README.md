@@ -37,7 +37,7 @@ kotlinc LinkerScriptGenerator.kt -d generator.jar
 
         "functions.list"
 
-cp ../../../build/esp32buzz/idf-plane/arduplane.map ardusub.map
+cp ../../../build/esp32buzz/idf-plane/ardutailsitter.map ardusub.map
 touch PROF000.TXT
 
 ## Run

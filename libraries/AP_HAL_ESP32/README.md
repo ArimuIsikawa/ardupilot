@@ -143,7 +143,7 @@ OLD
 
 Alternatively, the "./waf plane' build outputs a python command that y can cut-n-paste to flash... buzz found that but using that command with a slower baudrate of 921600 instead of its recommended 2000000 worked for him:
 cd ardupilot
-python ./modules/esp_idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0xf000 ./build/esp32buzz/idf-plane/ota_data_initial.bin 0x1000 ./build/esp32buzz/idf-plane/bootloader/bootloader.bin 0x20000 ./build/esp32buzz/idf-plane/arduplane.bin 0x8000 ./build/esp32buzz/idf-plane/partitions.bin
+python ./modules/esp_idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0xf000 ./build/esp32buzz/idf-plane/ota_data_initial.bin 0x1000 ./build/esp32buzz/idf-plane/bootloader/bootloader.bin 0x20000 ./build/esp32buzz/idf-plane/ardutailsitter.bin 0x8000 ./build/esp32buzz/idf-plane/partitions.bin
 
 ---
 
@@ -372,8 +372,8 @@ cat > core.txt
 ctrl-d
 The CORE DUMP START and CORE DUMP END lines must not be included in core dump text file.
 
-cp build/esp32buzz/idf-plane/arduplane.elf .
-espcoredump.py dbg_corefile arduplane.elf -c core.txt -t b64
+cp build/esp32buzz/idf-plane/ardutailsitter.elf .
+espcoredump.py dbg_corefile ardutailsitter.elf -c core.txt -t b64
 
 .. this will give u a 'gdb' of the core dump, from which you can type..
 bt

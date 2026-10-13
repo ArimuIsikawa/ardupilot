@@ -29,4 +29,4 @@ _ap_bin()
 }
 
 
-complete -F _ap_bin arduplane
+complete -F _ap_bin ardutailsitter

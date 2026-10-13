@@ -102,6 +102,7 @@ protected:
     bool reverse_elevator_rudder;
     bool ice_engine;
     bool tailsitter;
+    bool dual_motor_tailsitter = false;
     bool aerobatic;
     bool copter_tailsitter;
     bool have_launcher;

@@ -18,7 +18,8 @@ import board_list
 
 # map from vehicle names to binary names
 VEHICLE_MAP = {
-    "plane"          : "arduplane",
+    "plane"          : "ardutailsitter",
+    "tailsitter"     : "ardutailsitter",
     "AP_Periph"      : "AP_Periph",
     "bootloader"     : "AP_Bootloader",
     "iofirmware"     : "iofirmware_highpolh",  # FIXME: lowpolh?

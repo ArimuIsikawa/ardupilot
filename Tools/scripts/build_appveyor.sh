@@ -21,7 +21,7 @@ cd /cygdrive/c/work
     python3 waf -j4 plane
 
     # map to the names that MissionPlanner expects
-    cp /cygdrive/c/work/build/sitl/bin/arduplane.exe /cygdrive/c/work/sitl/ArduPlane.elf
+    cp /cygdrive/c/work/build/sitl/bin/ardutailsitter.exe /cygdrive/c/work/sitl/ArduPlane.elf
 
     cp /usr/i686-pc-cygwin/sys-root/usr/bin/*.dll /cygdrive/c/work/sitl/
 

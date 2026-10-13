@@ -250,12 +250,12 @@ def should_run_step(step):
 __bin_names = {
 
 
-    "Plane": "arduplane",
-    "PlaneTests1a": "arduplane",
-    "PlaneTests1b": "arduplane",
-    "PlaneTests1c": "arduplane",
+    "Plane": "ardutailsitter",
+    "PlaneTests1a": "ardutailsitter",
+    "PlaneTests1b": "ardutailsitter",
+    "PlaneTests1c": "ardutailsitter",
 
-    "QuadPlane": "arduplane",
+    "QuadPlane": "ardutailsitter",
     "SITLPeriphUniversal": ("sitl_periph_universal", "AP_Periph"),
     "SITLPeriphBattMon": ("sitl_periph_battmon", "AP_Periph"),
 }
@@ -380,7 +380,7 @@ def run_step(step):
     vehicle_binary = None
     board = "sitl"
     if step == 'build.Plane':
-        vehicle_binary = 'bin/arduplane'
+        vehicle_binary = 'bin/ardutailsitter'
 
     if step == 'build.SITLPeriphUniversal':
         vehicle_binary = 'bin/AP_Periph'

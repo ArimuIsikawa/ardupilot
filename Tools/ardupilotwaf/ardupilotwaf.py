@@ -674,8 +674,8 @@ special group "all" selects all programs.
     g.add_option('--upload',
         action='store_true',
         help='''Upload applicable targets to a connected device. Not all
-platforms may support this. Example: `waf plane --upload` means "build
-arduplane and upload it to my board".
+platforms may support this. Example: `waf tailsitter --upload` means "build
+ardutailsitter and upload it to my board".
 ''')
 
     g.add_option('--upload-port',

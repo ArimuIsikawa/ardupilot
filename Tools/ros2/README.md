@@ -9,7 +9,7 @@ Build from a ROS 2 workspace containing this repository:
 ```sh
 colcon build --packages-up-to ardupilot_sitl
 source install/setup.bash
-ros2 launch ardupilot_sitl sitl.launch.py command:=arduplane model:=plane
+ros2 launch ardupilot_sitl sitl.launch.py command:=ardutailsitter model:=plane
 ```
 
 DDS is enabled by default in the SITL package. Transport settings are in

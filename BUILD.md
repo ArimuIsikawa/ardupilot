@@ -22,14 +22,14 @@ Do not run `waf` with `sudo`!  This leads to permission and environment problems
 There are several commands in the build system for advanced usage, but here we
 list some basic and more used commands as example.
 
-- **Build ArduPlane**
+- **Build ArduTailSitter**
 
-    Below shows how to build ArduPlane for the Pixhawk2/Cube. Many other boards are
+    Below shows how to build ArduTailSitter for the Pixhawk2/Cube. Many other boards are
     supported and the next section shows how to get a full list of them.
 
     ```sh
     ./waf configure --board CubeBlack
-    ./waf plane
+    ./waf tailsitter
     ```
 
     The first command should be called only once or when you want to change a
@@ -39,17 +39,17 @@ list some basic and more used commands as example.
 
     ```sh
     ./waf configure --board MatekF405-Wing
-    ./waf plane
+    ./waf tailsitter
     ```
 
     If building for the Disco the binary must be built statically:
 
     ```sh
     ./waf configure --board disco --static
-    ./waf plane
+    ./waf tailsitter
     ```
 
-    The "arduplane" binary should appear in the `build/<board-name>/bin` directory.
+    The "ardutailsitter" binary should appear in the `build/<board-name>/bin` directory.
 
 - **List available boards**
 
@@ -82,9 +82,9 @@ list some basic and more used commands as example.
     Here is a list of the most common vehicle build targets:
 
     ```sh
-    ./waf plane                            # All multirotor types
+    ./waf tailsitter                            # All multirotor types
     ./waf heli                              # Heliplane types
-    ./waf plane                             # Fixed wing airplanes including VTOL
+    ./waf tailsitter                             # Fixed wing airplanes including VTOL
     ./waf rover                             # Ground-based rovers and surface boats
     ./waf sub                               # ROV and other submarines
     ./waf antennatracker                    # Antenna trackers
@@ -115,7 +115,7 @@ list some basic and more used commands as example.
     The command below uses the `--targets` option that is explained in the next item.
 
     ```sh
-    ./waf --targets bin/arduplane --upload
+    ./waf --targets bin/ardutailsitter --upload
     ```
 
     For Linux boards you need first to configure the IP of the board you
@@ -130,7 +130,7 @@ list some basic and more used commands as example.
 
     ```sh
     ./waf configure --board navio2 --rsync-dest root@192.168.1.2:/
-    ./waf --target bin/arduplane --upload
+    ./waf --target bin/ardutailsitter --upload
     ```
 
     This allows to set a destination to which the `--upload` option will upload
@@ -142,7 +142,7 @@ list some basic and more used commands as example.
     used by distributors to create .deb, .rpm or other package types:
 
     ```sh
-    ./waf plane
+    ./waf tailsitter
     DESTDIR=/my/temporary/location ./waf install
     ```
 
@@ -163,7 +163,7 @@ list some basic and more used commands as example.
 
     ```bash
     # ArduPlane (including QuadPlane)
-    ./waf --targets bin/arduplane
+    ./waf --targets bin/ardutailsitter
 
     # unit test of our math functions
     ./waf --targets tests/test_math
@@ -206,7 +206,7 @@ To build inside the container, prefix your `waf` commands, e.g.:
 
 ```bash
 docker run --rm -it -v $PWD:/ardupilot ardupilot-dev ./waf configure --board=sitl
-docker run --rm -it -v $PWD:/ardupilot ardupilot-dev ./waf plane
+docker run --rm -it -v $PWD:/ardupilot ardupilot-dev ./waf tailsitter
 ```
 
 Alternatively, simply run `docker run --rm -it -v $PWD:/ardupilot ardupilot-dev` to
@@ -272,9 +272,9 @@ All build files are placed under `build/<board>/`, where `<board>` represents
 the board/platform you selected during configuration. Each main program group
 has a folder with its name directly under `build/<board>/`. Thus, a program
 will be stored in `build/<board>/<main_group>/`, where `<main_group>` is the
-main group the program belongs to. For example, for a linux build, arduplane,
+main group the program belongs to. For example, for a linux build, ardutailsitter,
 which belongs to the main group "bin", will be located at
-`build/linux/bin/arduplane`.
+`build/linux/bin/ardutailsitter`.
 
 #### Main product groups
 
@@ -320,8 +320,8 @@ For less typing, you can use the group name as the command to waf. Examples:
 # Build all examples
 ./waf examples
 
-# Build arduplane binaries
-./waf plane
+# Build ardutailsitter binaries
+./waf tailsitter
 ```
 
 ### Building a specific program
@@ -330,8 +330,8 @@ In order to build a specific program, you just need to pass its path relative
 to `build/<board>/` to the option `--targets`. Example:
 
 ```bash
-# Build arduplane for quad frame
-./waf --targets bin/arduplane
+# Build ardutailsitter for quad frame
+./waf --targets bin/ardutailsitter
 
 # Build vectors unit test
 ./waf --targets tests/test_vectors

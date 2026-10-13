@@ -9,6 +9,7 @@ import os
 import numpy
 import math
 import copy
+from collections import namedtuple
 
 from pymavlink import mavutil
 from pymavlink.rotmat import Vector3
@@ -1188,6 +1189,168 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         self.change_mode("QLAND")
         self.wait_statustext("Rangefinder engaged", check_context=True)
         self.wait_disarmed(timeout=100)
+
+    def TailsitterAutoMission(self):
+        '''Fly a tailsitter AUTO mission with both transitions and a return to launch'''
+        defaults = self.model_defaults_filepath('plane-tailsitter-dual')
+        defaults.append(os.path.join(testdir, self.current_test_name_directory, 'sitl.parm'))
+        self.customise_SITL_commandline(
+            [],
+            defaults_filepath=defaults,
+            model='plane-tailsitter-dual',
+            wipe=True,
+        )
+        self.reboot_sitl()
+        self.load_mission('mission.txt')
+        self.change_mode('AUTO')
+        self.wait_ready_to_arm()
+        self.context_collect('STATUSTEXT')
+        self.set_message_rate_hz('EXTENDED_SYS_STATE', 10)
+        self.set_message_rate_hz('SIMSTATE', 20)
+        self.set_message_rate_hz('GLOBAL_POSITION_INT', 20)
+
+        samples = []
+        states = []
+        waypoints = set()
+        Sample = namedtuple('TailsitterSample', 'time waypoint state altitude pitch north_speed down_speed distance vtol_roll')
+        auto_mode = self.get_mode_from_mode_mapping('AUTO')
+
+        def collect_flight(mav, m):
+            if m.get_srcSystem() != self.sysid_thismav() or m.get_srcComponent() != mavutil.mavlink.MAV_COMP_ID_AUTOPILOT1:
+                return
+            if m.get_type() == 'HEARTBEAT' and m.custom_mode != auto_mode:
+                raise NotAchievedException('Tailsitter mission left AUTO: %s' % m)
+            if m.get_type() == 'EXTENDED_SYS_STATE':
+                if not states or states[-1] != m.vtol_state:
+                    states.append(m.vtol_state)
+            if m.get_type() == 'MISSION_CURRENT':
+                waypoints.add(m.seq)
+            if m.get_type() != 'GLOBAL_POSITION_INT':
+                return
+            sim = mav.messages.get('SIMSTATE')
+            mission = mav.messages.get('MISSION_CURRENT')
+            state = mav.messages.get('EXTENDED_SYS_STATE')
+            if sim is None or mission is None or state is None:
+                return
+            # Measure roll in the vertical frame without the nose-up Euler singularity.
+            vtol_roll = math.degrees(math.atan2(math.sin(sim.roll) * math.cos(sim.pitch), math.sin(sim.pitch)))
+            samples.append(Sample(m.time_boot_ms * 0.001, mission.seq, state.vtol_state,
+                                  m.relative_alt * 0.001, math.degrees(sim.pitch), m.vx * 0.01, m.vz * 0.01,
+                                  self.get_distance(self.sitl_start_location(),
+                                                    mavutil.location(m.lat * 1e-7, m.lon * 1e-7)), vtol_roll))
+
+        self.install_message_hook_context(collect_flight)
+        self.arm_vehicle()
+        self.wait_waypoint(1, 5, allow_skip=False, max_dist=5, timeout=500)
+        self.wait_disarmed(timeout=300)
+        self.remove_message_hook(collect_flight)
+        self.context_get().message_hooks.remove(collect_flight)
+
+        required_states = [mavutil.mavlink.MAV_VTOL_STATE_MC,
+                           mavutil.mavlink.MAV_VTOL_STATE_TRANSITION_TO_FW,
+                           mavutil.mavlink.MAV_VTOL_STATE_FW,
+                           mavutil.mavlink.MAV_VTOL_STATE_TRANSITION_TO_MC,
+                           mavutil.mavlink.MAV_VTOL_STATE_MC]
+        if states != required_states:
+            raise NotAchievedException('Unexpected tailsitter transition sequence: %s' % states)
+        if not set(range(1, 6)).issubset(waypoints):
+            raise NotAchievedException('Skipped mission items: %s' % waypoints)
+
+        hover = [s for s in samples if s.waypoint == 1 and s.altitude > 10 and s.pitch > 70]
+        outbound = [s for s in samples if s.waypoint in (2, 3) and abs(s.pitch) < 20 and s.north_speed > 15]
+        inbound = [s for s in samples if s.waypoint == 4 and abs(s.pitch) < 20 and s.north_speed < -15]
+        descent = [s for s in samples if s.waypoint == 5 and 10 < s.altitude < 30 and s.pitch > 65 and s.down_speed > 0.3]
+        if not all((hover, outbound, inbound, descent)):
+            raise NotAchievedException('Missing vertical takeoff, horizontal flight, turn or vertical descent')
+        takeoff = [s for s in samples if s.waypoint == 1 and s.state == mavutil.mavlink.MAV_VTOL_STATE_MC and s.altitude > 3]
+        if not takeoff or max(abs(s.vtol_roll) for s in takeoff) > 5:
+            raise NotAchievedException('Unstable roll during vertical takeoff')
+        if max(s.distance for s in takeoff) > 2:
+            raise NotAchievedException('Excessive horizontal movement during vertical takeoff')
+        cruise = [s for s in samples if s.waypoint == 3 and s.state == mavutil.mavlink.MAV_VTOL_STATE_FW]
+        cruise = [s for s in cruise if s.time > cruise[0].time + 3] if cruise else []
+        if not cruise or max(abs(s.pitch) for s in cruise) > 15:
+            raise NotAchievedException('Unstable pitch on the straight fixed-wing leg')
+        landing = [s for s in samples if s.waypoint == 5 and 3 < s.altitude < 30]
+        if any(s.pitch < 65 or s.down_speed > 2 for s in landing):
+            raise NotAchievedException('Lost vertical attitude or exceeded landing descent speed')
+        if max(s.distance for s in samples) < 650:
+            raise NotAchievedException('Did not reach the outbound leg')
+        if samples[-1].distance > 5 or samples[-1].altitude > 1:
+            raise NotAchievedException('Did not land at launch: %s' % (samples[-1],))
+
+        for state in (mavutil.mavlink.MAV_VTOL_STATE_TRANSITION_TO_FW,
+                      mavutil.mavlink.MAV_VTOL_STATE_TRANSITION_TO_MC):
+            transition = [s for s in samples if s.state == state]
+            intermediate = [s for s in transition if 25 < s.pitch < 65]
+            if len(intermediate) < 3 or transition[-1].time - transition[0].time < 1:
+                raise NotAchievedException('Transition was too abrupt: state=%u' % state)
+            if min(s.altitude for s in transition) < 20:
+                raise NotAchievedException('Lost altitude during transition: state=%u' % state)
+            self.progress('Transition state=%u duration=%.2fs minimum altitude=%.2fm' %
+                          (state, transition[-1].time - transition[0].time, min(s.altitude for s in transition)))
+
+        for m in self.context_collection('STATUSTEXT'):
+            if 'Transition' in m.text and ('timeout' in m.text or 'roll error' in m.text):
+                raise NotAchievedException('Transition used a fallback: %s' % m.text)
+        self.progress('Maximum altitude=%.2fm distance=%.2fm; landing distance=%.2fm' %
+                      (max(s.altitude for s in samples), max(s.distance for s in samples), samples[-1].distance))
+        self.progress('Landing maximum descent speed=%.2fm/s minimum pitch=%.2fdeg' %
+                      (max(s.down_speed for s in landing), min(s.pitch for s in landing)))
+        self.progress('Straight fixed-wing leg maximum pitch=%.2fdeg' % max(abs(s.pitch) for s in cruise))
+        self.progress('Vertical takeoff maximum roll=%.2fdeg distance=%.2fm' %
+                      (max(abs(s.vtol_roll) for s in takeoff), max(s.distance for s in takeoff)))
+        self.progress('Tailsitter AUTO takeoff, transitions, out-and-back flight and landing OK')
+
+    def TailsitterDualMotorSetup(self):
+        '''Check the non-vectored dual-motor tailsitter configuration and elevon mixing'''
+        defaults = self.model_defaults_filepath('plane-tailsitter-dual')
+        defaults.append(os.path.join(testdir, self.current_test_name_directory, 'dual-motor.parm'))
+        self.customise_SITL_commandline(
+            [],
+            defaults_filepath=defaults,
+            model='plane-tailsitter-dual',
+            wipe=True,
+        )
+        self.reboot_sitl()
+        self.change_mode('MANUAL')
+        self.set_parameters({'RC1_MIN': 1000, 'RC1_MAX': 2000, 'RC1_TRIM': 1500,
+                             'RC2_MIN': 1000, 'RC2_MAX': 2000, 'RC2_TRIM': 1500})
+        self.set_rc(1, 1500)
+        self.set_rc(2, 1500)
+        self.set_rc(3, 1000)
+
+        for name, value in {'Q_FRAME_CLASS': 10, 'Q_TAILSIT_ENABLE': 1, 'Q_TAILSIT_MOTMX': 0,
+                            'Q_TILT_ENABLE': 0, 'Q_TAILSIT_VHGAIN': 0,
+                            'SERVO1_FUNCTION': 77, 'SERVO2_FUNCTION': 78,
+                            'SERVO3_FUNCTION': -1, 'SERVO4_FUNCTION': -1,
+                            'SERVO5_FUNCTION': 73, 'SERVO6_FUNCTION': 74}.items():
+            if self.get_parameter(name) != value:
+                raise NotAchievedException('Wrong dual-motor setting: %s' % name)
+
+        neutral_left = self.get_servo_channel_value(1)
+        neutral_right = self.get_servo_channel_value(2)
+        self.set_rc(1, 1800)
+        self.delay_sim_time(1)
+        roll_left = self.get_servo_channel_value(1) - neutral_left
+        roll_right = self.get_servo_channel_value(2) - neutral_right
+        if roll_left * roll_right >= 0 or min(abs(roll_left), abs(roll_right)) < 50:
+            raise NotAchievedException('Elevons did not move oppositely for roll')
+        self.set_rc(1, 1500)
+        self.set_rc(2, 1800)
+        self.delay_sim_time(1)
+        pitch_left = self.get_servo_channel_value(1) - neutral_left
+        pitch_right = self.get_servo_channel_value(2) - neutral_right
+        if pitch_left * pitch_right <= 0 or min(abs(pitch_left), abs(pitch_right)) < 50:
+            raise NotAchievedException('Elevons did not move together for pitch')
+        self.set_rc(2, 1500)
+
+        motors_before = [self.get_servo_channel_value(channel) for channel in (5, 6)]
+        self.change_mode('QHOVER')
+        self.delay_sim_time(2)
+        motors_after = [self.get_servo_channel_value(channel) for channel in (5, 6)]
+        if motors_before != motors_after:
+            raise NotAchievedException('Disarmed motor outputs changed on entering VTOL')
 
     def setup_ICEngine_vehicle(self):
         '''restarts SITL with an IC Engine setup'''
@@ -3185,6 +3348,8 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             self.GyroFFT,
             self.Tailsitter,
             self.CopterTailsitter,
+            self.TailsitterAutoMission,
+            self.TailsitterDualMotorSetup,
             self.ICEngine,
             self.ICEngineMission,
             self.ICEngineRPMGovernor,

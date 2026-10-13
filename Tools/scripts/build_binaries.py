@@ -507,8 +507,8 @@ is bob we will attempt to checkout bob-AVR'''
                     self.progress("Not extracting features as (%s) does not exist" % (ef_path,))
 
                 # only rename the elf if we have have other files to
-                # copy.  So linux gets "arduplane" and stm32 gets
-                # "arduplane.elf"
+                # copy.  So linux gets "ardutailsitter" and stm32 gets
+                # "ardutailsitter.elf"
                 target_elf_filename = os.path.basename(bare_path)
                 if len(files_to_copy) > 0:
                     target_elf_filename += ".elf"
@@ -588,7 +588,7 @@ is bob we will attempt to checkout bob-AVR'''
                            "ArduPlane",
                            boards,
                            "Plane",
-                           "arduplane")
+                           "ardutailsitter")
 
     def build_AP_Periph(self, tag):
         '''build AP_Periph binaries'''

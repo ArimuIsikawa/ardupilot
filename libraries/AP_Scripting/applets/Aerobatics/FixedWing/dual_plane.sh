@@ -4,7 +4,7 @@
 
 # assume we start the script from the root directory
 ROOTDIR=$PWD
-PLANE=$ROOTDIR/build/sitl/bin/arduplane
+PLANE=$ROOTDIR/build/sitl/bin/ardutailsitter
 
 LOC1="-35.36274643,149.16513199,585,353.8"
 LOC2="-35.36274593,149.16516256,585,353.8"

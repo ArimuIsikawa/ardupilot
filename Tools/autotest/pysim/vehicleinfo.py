@@ -14,122 +14,126 @@ class VehicleInfo(object):
         "frames": {
             # PLANE
             "quadplane-tilttri": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm",
                                             "default_params/quadplane-tilttri.parm"],
             },
             "quadplane-tilttrivec": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm",
                                             "default_params/quadplane-tilttrivec.parm"],
             },
             "quadplane-tilthvec": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/quadplane-tilthvec.parm"],
             },
             "quadplane-tri": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm",
                                             "default_params/quadplane-tri.parm"],
             },
             "quadplane-cl84" : {
-                "waf_target" : "bin/arduplane",
+                "waf_target" : "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm",
                                             "default_params/quadplane-cl84.parm"],
             },
             "quadplane": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "default_params/quadplane.parm",
             },
             "quadplane-ice": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm", "default_params/plane-ice.parm", "default_params/quadplane-ice.parm"],
             },
             "quadplane-can": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm", "default_params/quadplane-can.parm"],
                 "periph_params_filename": ["default_params/periph.parm", "default_params/quadplane-periph.parm"],
             },
             "quadplane-tilt": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm",
                                             "default_params/quadplane-tilt.parm"],
             },
             "firefly": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm",
                                             "default_params/firefly.parm"]
             },
             "plane-elevon": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-elevons.parm"],
             },
             "plane-vtail": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-vtail.parm"],
             },
             "plane-tailsitter": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "default_params/plane-tailsitter.parm",
             },
+            "plane-tailsitter-dual": {
+                "waf_target": "bin/ardutailsitter",
+                "default_params_filename": ["models/plane.parm", "default_params/plane-tailsitter-dual.parm"],
+            },
             "plane-jet": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-jet.parm"],
             },
             "plane-ice": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-ice.parm"],
             },
             "plane-3d": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": [], # defaults are loaded in SIM_Plane.cpp
             },
             "glider": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "default_params/glider.parm",
             },
             "quadplane-copter_tailsitter": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["default_params/quadplane.parm","default_params/quadplane-copter_tailsitter.parm"],
             },
             "plane": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "models/plane.parm",
             },
             "plane-dspoilers": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-dspoilers.parm"]
             },
             "plane-redundant": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-redundant.parm"]
             },
             "plane-soaring": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-soaring.parm"]
             },
             "gazebo-zephyr": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "default_params/gazebo-zephyr.parm",
                 "external": True,
             },
             "last_letter": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "models/plane.parm",
                 "external": True,
             },
             "CRRCSim": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "models/plane.parm",
                 "external": True,
             },
             "jsbsim": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "default_params/plane-jsbsim.parm",
                 "external": True,
             },
             "scrimmage-plane" : {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "models/plane.parm",
                 "external": True,
             },
@@ -138,7 +142,7 @@ class VehicleInfo(object):
                 "external": True,  # lies!  OTOH, hard to take off with this
             },
             "stratoblimp": {
-                "waf_target": "bin/arduplane",
+                "waf_target": "bin/ardutailsitter",
                 "default_params_filename": "default_params/stratoblimp.parm",
             },
         },

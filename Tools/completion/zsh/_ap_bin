@@ -1,4 +1,4 @@
-#compdef arduplane
+#compdef ardutailsitter
 #autoload
 
 _ap_bin() {

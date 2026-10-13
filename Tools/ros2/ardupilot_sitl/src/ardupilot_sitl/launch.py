@@ -523,10 +523,10 @@ class SITLLaunch:
             # Required launch arguments.
             DeclareLaunchArgument(
                 "command",
-                default_value="arduplane",
+                default_value="ardutailsitter",
                 description="Run ArduPilot SITL.",
                 choices=[
-                    "arduplane",
+                    "ardutailsitter",
                 ],
             ),
             DeclareLaunchArgument(

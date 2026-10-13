@@ -85,7 +85,7 @@ fun generateLinkerScript(mapFileName: String, profileFileName: String, scriptFil
 
 fun main(args: Array<String>) {
     generateLinkerScript(
-        "arduplane.map",
+        "ardutailsitter.map",
         "PROF000.TXT",
         "functions.list"
     )

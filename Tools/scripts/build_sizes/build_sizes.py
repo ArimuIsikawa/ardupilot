@@ -23,7 +23,7 @@ args = parser.parse_args()
 warning_flash_free = 5000
 warning_build_days = 3
 
-LINUX_BINARIES = ["arduplane"]
+LINUX_BINARIES = ["ardutailsitter"]
 
 
 class APJInfo:

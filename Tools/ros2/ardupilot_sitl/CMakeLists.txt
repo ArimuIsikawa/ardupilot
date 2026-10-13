@@ -63,7 +63,7 @@ add_dependencies(ardupilot_build ardupilot_configure)
 
 # Install executables.
 install(PROGRAMS
-  ${ARDUPILOT_ROOT}/build/sitl/bin/arduplane
+  ${ARDUPILOT_ROOT}/build/sitl/bin/ardutailsitter
   DESTINATION bin/
 )
 

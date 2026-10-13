@@ -255,7 +255,10 @@ jobs:
 
           # build MatekF405 Plane without quadplane
           if [ "${{matrix.config}}" = "MatekF405" ]; then
-            PLANE_BINARY="build/MatekF405/bin/arduplane.bin"
+            PLANE_BINARY="build/MatekF405/bin/ardutailsitter.bin"
+            if [ ! -f "$PLANE_BINARY" ]; then
+              PLANE_BINARY="build/MatekF405/bin/arduplane.bin"
+            fi
             echo "normal size"
             ls -l "$PLANE_BINARY"
             EXTRA_HWDEF="/tmp/extra-options.def"
@@ -296,10 +299,13 @@ jobs:
           elif [ $BOOTLOADER -eq 1 ]; then
               EF_BINARY_NAME="AP_Bootloader"
           else
-              EF_BINARY_NAME="arduplane"
+              EF_BINARY_NAME="ardutailsitter"
           fi
           EF_BASE_BRANCH_BINARY="$GITHUB_WORKSPACE/base_branch_bin/$EF_BINARY_NAME"
           EF_PR_BRANCH_BINARY="$GITHUB_WORKSPACE/pr_bin/$EF_BINARY_NAME"
+          if [ "$EF_BINARY_NAME" = "ardutailsitter" ] && [ ! -f "$EF_BASE_BRANCH_BINARY" ]; then
+              EF_BASE_BRANCH_BINARY="$GITHUB_WORKSPACE/base_branch_bin/arduplane"
+          fi
 
           Tools/scripts/extract_features.py "$EF_BASE_BRANCH_BINARY" --nm "${BIN_PREFIX}nm" >features-base_branch.txt
           Tools/scripts/extract_features.py "$EF_PR_BRANCH_BINARY" --nm "${BIN_PREFIX}nm" >features-pr.txt

@@ -1,0 +1,22 @@
+# SITL setup example: two fixed motors and two elevons, no tilt servos.
+# Elevons on outputs 1/2; left/right motor throttle on outputs 5/6.
+# This checks the mixer, not the flight dynamics of a particular aircraft.
+Q_ENABLE         1
+Q_FRAME_CLASS   10
+Q_TAILSIT_ENABLE 1
+Q_TAILSIT_MOTMX  0
+Q_TILT_ENABLE    0
+Q_TAILSIT_VHGAIN 0
+Q_TAILSIT_VFGAIN 0
+Q_TAILSIT_RAT_FW 20
+Q_TAILSIT_RAT_VT 20
+Q_TAILSIT_ANGLE  45
+Q_TAILSIT_ANG_VT 45
+SERVO1_FUNCTION 77
+SERVO2_FUNCTION 78
+SERVO3_FUNCTION -1
+SERVO4_FUNCTION -1
+SERVO5_FUNCTION 73
+SERVO6_FUNCTION 74
+SERVO7_FUNCTION -1
+SERVO8_FUNCTION -1

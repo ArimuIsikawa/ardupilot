@@ -265,7 +265,7 @@ def kill_tasks():
     if cmd_opts.coverage:
         import psutil
         for proc in psutil.process_iter(['pid', 'name', 'environ']):
-            if proc.name() not in ["arduplane"]:
+            if proc.name() not in ["ardutailsitter", "arduplane"]:
                 # only kill vehicle that way
                 continue
             if os.environ['SIM_VEHICLE_SESSION'] not in proc.environ().get('SIM_VEHICLE_SESSION'):
@@ -285,11 +285,13 @@ def kill_tasks():
             'JSBSim',
             'lt-JSBSim',
             'ArduPlane.elf',
+            'ArduTailSitter.elf',
             'JSBSIm.exe',
             'MAVProxy.exe',
             'runsim.py',
             'scrimmage',
             'arduplane',
+            'ardutailsitter',
         }
         for vehicle in vinfo.options:
             for frame in vinfo.options[vehicle]["frames"]:
@@ -686,7 +688,7 @@ def start_CAN_Periph(opts, frame_info):
 def start_vehicle(binary, opts, stuff, spawns=None):
     """Run the ArduPilot binary"""
 
-    cmd_name = opts.vehicle
+    cmd_name = "ArduTailSitter" if opts.vehicle == "ArduPlane" else opts.vehicle
     cmd = []
     if opts.valgrind:
         cmd_name += " (valgrind)"
@@ -980,7 +982,7 @@ def start_mavproxy(opts, stuff):
             time.sleep(10)
 
 
-vehicle_options_string = '|'.join(vinfo.options.keys())
+vehicle_options_string = '|'.join(["ArduTailSitter"] + list(vinfo.options.keys()))
 
 
 def generate_frame_help():
@@ -988,13 +990,16 @@ def generate_frame_help():
     for vehicle in vinfo.options:
         frame_options = sorted(vinfo.options[vehicle]["frames"].keys())
         frame_options_string = '|'.join(frame_options)
-        ret += "%s: %s\n" % (vehicle, frame_options_string)
+        name = "ArduTailSitter" if vehicle == "ArduPlane" else vehicle
+        ret += "%s: %s\n" % (name, frame_options_string)
     return ret
 
 
 # Map vehicle aliases back to directory names.
 vehicle_map = {
     "Plane": "ArduPlane",
+    "ArduTailSitter": "ArduPlane",
+    "TailSitter": "ArduPlane",
 }
 # add lower-case equivalents too
 for k in list(vehicle_map.keys()):

@@ -469,7 +469,8 @@ class TestBuildOptions(object):
         file for that target'''
         target_to_binpath = {
             "copter": "arducopter",
-            "plane": "arduplane",
+            "plane": "ardutailsitter",
+            "tailsitter": "ardutailsitter",
             "rover": "ardurover",
             "antennatracker": "antennatracker",
             "sub": "ardusub",

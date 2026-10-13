@@ -22,7 +22,8 @@ H7_DUAL_BANK_LIST = [
 ] # List of H7 boards with dual bank
 
 ELF_NAME_MAPPING = {
-    'plane': 'arduplane',
+    'plane': 'ardutailsitter',
+    'tailsitter': 'ardutailsitter',
     'bootloader': 'AP_Bootloader',
     'AP_Periph': 'AP_Periph',
 }
