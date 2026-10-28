@@ -132,6 +132,7 @@ void GCS_MAVLINK_Plane::send_attitude() const
 {
     const AP_AHRS &ahrs = AP::ahrs();
 
+    // Report the aircraft body attitude in every mode, including tailsitter hover.
     float r = ahrs.get_roll_rad();
     float p = ahrs.get_pitch_rad();
     float y = ahrs.get_yaw_rad();
@@ -139,14 +140,6 @@ void GCS_MAVLINK_Plane::send_attitude() const
     if (!(plane.flight_option_enabled(FlightOptions::GCS_REMOVE_TRIM_PITCH))) {
         p -= radians(plane.g.pitch_trim);
     }
-
-#if HAL_QUADPLANE_ENABLED
-    if (plane.quadplane.show_vtol_view()) {
-        r = plane.quadplane.ahrs_view->roll;
-        p = plane.quadplane.ahrs_view->pitch;
-        y = plane.quadplane.ahrs_view->yaw;
-    }
-#endif
 
     const Vector3f &omega = ahrs.get_gyro();
     mavlink_msg_attitude_send(

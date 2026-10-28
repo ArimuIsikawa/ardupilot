@@ -43,6 +43,7 @@ names. `./waf plane` and `sim_vehicle.py -v ArduPlane` remain compatible aliases
 - [Plane documentation](https://ardupilot.org/plane/)
 - [Developer documentation](https://ardupilot.org/dev/)
 - [Tailsitter AUTO mission and SITL examples](docs/tailsitter-auto.md)
+- [Tailsitter failure scenarios and SITL checks](docs/tailsitter-failsafe.md)
 - [Contribution guidelines](.github/CONTRIBUTING.md)
 - [Code of conduct](CODE_OF_CONDUCT.md)
 - [Upstream contributors](https://github.com/ArduPilot/ardupilot/graphs/contributors)

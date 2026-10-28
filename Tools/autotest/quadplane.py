@@ -12,6 +12,7 @@ import copy
 from collections import namedtuple
 
 from pymavlink import mavutil
+from pymavlink.quaternion import Quaternion
 from pymavlink.rotmat import Vector3
 
 import vehicle_test_suite
@@ -1208,11 +1209,15 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         self.set_message_rate_hz('EXTENDED_SYS_STATE', 10)
         self.set_message_rate_hz('SIMSTATE', 20)
         self.set_message_rate_hz('GLOBAL_POSITION_INT', 20)
+        self.set_message_rate_hz('ATTITUDE', 20)
+        self.set_message_rate_hz('ATTITUDE_QUATERNION', 20)
 
         samples = []
         states = []
         waypoints = set()
-        Sample = namedtuple('TailsitterSample', 'time waypoint state altitude pitch north_speed down_speed distance vtol_roll')
+        Sample = namedtuple('TailsitterSample',
+                            'time waypoint state altitude pitch north_speed down_speed distance '
+                            'vtol_roll hud_pitch attitude_error')
         auto_mode = self.get_mode_from_mode_mapping('AUTO')
 
         def collect_flight(mav, m):
@@ -1230,14 +1235,29 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             sim = mav.messages.get('SIMSTATE')
             mission = mav.messages.get('MISSION_CURRENT')
             state = mav.messages.get('EXTENDED_SYS_STATE')
-            if sim is None or mission is None or state is None:
+            attitude = mav.messages.get('ATTITUDE')
+            quaternion = mav.messages.get('ATTITUDE_QUATERNION')
+            if any(value is None for value in (sim, mission, state, attitude, quaternion)):
                 return
+            if max(abs(m.time_boot_ms - attitude.time_boot_ms),
+                   abs(attitude.time_boot_ms - quaternion.time_boot_ms)) > 100:
+                return
+            # Compare whole orientations; body Euler roll/yaw are ambiguous at vertical pitch.
+            hud = Quaternion([attitude.roll, attitude.pitch, attitude.yaw])
+            physical = Quaternion([quaternion.q1, quaternion.q2, quaternion.q3, quaternion.q4])
+            hud.normalize()
+            physical.normalize()
+            dot = abs(sum(a * b for a, b in zip(hud.q, physical.q)))
+            if not math.isfinite(dot):
+                raise NotAchievedException('Non-finite GCS attitude')
+            attitude_error = math.degrees(2 * math.acos(min(1.0, dot)))
             # Measure roll in the vertical frame without the nose-up Euler singularity.
             vtol_roll = math.degrees(math.atan2(math.sin(sim.roll) * math.cos(sim.pitch), math.sin(sim.pitch)))
             samples.append(Sample(m.time_boot_ms * 0.001, mission.seq, state.vtol_state,
                                   m.relative_alt * 0.001, math.degrees(sim.pitch), m.vx * 0.01, m.vz * 0.01,
                                   self.get_distance(self.sitl_start_location(),
-                                                    mavutil.location(m.lat * 1e-7, m.lon * 1e-7)), vtol_roll))
+                                                    mavutil.location(m.lat * 1e-7, m.lon * 1e-7)),
+                                  vtol_roll, math.degrees(attitude.pitch), attitude_error))
 
         self.install_message_hook_context(collect_flight)
         self.arm_vehicle()
@@ -1255,6 +1275,8 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             raise NotAchievedException('Unexpected tailsitter transition sequence: %s' % states)
         if not set(range(1, 6)).issubset(waypoints):
             raise NotAchievedException('Skipped mission items: %s' % waypoints)
+        if not samples or max(s.attitude_error for s in samples) > 5:
+            raise NotAchievedException('GCS attitude does not represent the physical aircraft orientation')
 
         hover = [s for s in samples if s.waypoint == 1 and s.altitude > 10 and s.pitch > 70]
         outbound = [s for s in samples if s.waypoint in (2, 3) and abs(s.pitch) < 20 and s.north_speed > 15]
@@ -1267,6 +1289,8 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             raise NotAchievedException('Unstable roll during vertical takeoff')
         if max(s.distance for s in takeoff) > 2:
             raise NotAchievedException('Excessive horizontal movement during vertical takeoff')
+        if min(s.hud_pitch for s in takeoff) < 70:
+            raise NotAchievedException('GCS horizon does not show nose-up vertical takeoff')
         cruise = [s for s in samples if s.waypoint == 3 and s.state == mavutil.mavlink.MAV_VTOL_STATE_FW]
         cruise = [s for s in cruise if s.time > cruise[0].time + 3] if cruise else []
         if not cruise or max(abs(s.pitch) for s in cruise) > 15:
@@ -1274,6 +1298,8 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         landing = [s for s in samples if s.waypoint == 5 and 3 < s.altitude < 30]
         if any(s.pitch < 65 or s.down_speed > 2 for s in landing):
             raise NotAchievedException('Lost vertical attitude or exceeded landing descent speed')
+        if not landing or min(s.hud_pitch for s in landing) < 65:
+            raise NotAchievedException('GCS horizon does not show nose-up vertical landing')
         if max(s.distance for s in samples) < 650:
             raise NotAchievedException('Did not reach the outbound leg')
         if samples[-1].distance > 5 or samples[-1].altitude > 1:
@@ -1300,7 +1326,205 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         self.progress('Straight fixed-wing leg maximum pitch=%.2fdeg' % max(abs(s.pitch) for s in cruise))
         self.progress('Vertical takeoff maximum roll=%.2fdeg distance=%.2fm' %
                       (max(abs(s.vtol_roll) for s in takeoff), max(s.distance for s in takeoff)))
+        self.progress('GCS attitude maximum error=%.2fdeg; minimum pitch takeoff=%.2fdeg landing=%.2fdeg' %
+                      (max(s.attitude_error for s in samples), min(s.hud_pitch for s in takeoff),
+                       min(s.hud_pitch for s in landing)))
         self.progress('Tailsitter AUTO takeoff, transitions, out-and-back flight and landing OK')
+
+    def setup_tailsitter_failsafe_mission(self, parameters=None):
+        '''Start an isolated dual-motor tailsitter with the validated AUTO mission'''
+        mission_dir = os.path.join(testdir, 'ArduPlane_Tests', 'TailsitterAutoMission')
+        defaults = self.model_defaults_filepath('plane-tailsitter-dual')
+        defaults.append(os.path.join(mission_dir, 'sitl.parm'))
+        self.customise_SITL_commandline(
+            [],
+            defaults_filepath=defaults,
+            model='plane-tailsitter-dual',
+            wipe=True,
+        )
+        if parameters is not None:
+            self.set_parameters(parameters)
+        self.reboot_sitl()
+        self.load_mission_from_filepath(os.path.join(mission_dir, 'mission.txt'))
+        self.zero_throttle()
+        self.change_mode('AUTO')
+        self.wait_ready_to_arm()
+        self.context_collect('STATUSTEXT')
+        self.set_message_rate_hz('EXTENDED_SYS_STATE', 10)
+        self.set_message_rate_hz('GLOBAL_POSITION_INT', 10)
+        self.set_message_rate_hz('SIMSTATE', 10)
+        self.set_message_rate_hz('SIM_STATE', 10)
+        ground = self.assert_receive_message('SIM_STATE')
+        self.tailsitter_failsafe_ground_alt = ground.alt
+        self.tailsitter_failsafe_truth = []
+
+        def collect_truth(mav, message):
+            if message.get_type() == 'SIM_STATE':
+                self.tailsitter_failsafe_truth.append(message)
+
+        self.install_message_hook_context(collect_truth)
+
+    def assert_tailsitter_failsafe_landed(self, timeout=180):
+        '''Require a touchdown and automatic disarm, rather than only a mode change'''
+        self.wait_disarmed(timeout=timeout)
+        self.wait_extended_sys_state(mavutil.mavlink.MAV_VTOL_STATE_MC,
+                                     mavutil.mavlink.MAV_LANDED_STATE_ON_GROUND)
+        position = self.assert_receive_message('GLOBAL_POSITION_INT')
+        attitude = self.assert_receive_message('SIM_STATE')
+        if abs(position.relative_alt) > 1000 or math.hypot(position.vx, position.vy) > 100:
+            raise NotAchievedException('Failsafe did not finish stationary on the ground: %s' % position)
+        if abs(attitude.alt - self.tailsitter_failsafe_ground_alt) > 1 or \
+           math.sqrt(attitude.vn**2 + attitude.ve**2 + attitude.vd**2) > 1:
+            raise NotAchievedException('Failsafe ground state disagrees with the physical model: %s' % attitude)
+        if math.degrees(attitude.pitch) < 65:
+            raise NotAchievedException('Failsafe did not finish nose-up: %s' % attitude)
+        descent = [m for m in self.tailsitter_failsafe_truth
+                   if 3 < m.alt - self.tailsitter_failsafe_ground_alt < 30 and m.vd > 0.2]
+        if len(descent) < 5 or any(math.degrees(m.pitch) < 65 or m.vd > 2 for m in descent):
+            raise NotAchievedException('Failsafe did not perform a controlled vertical descent')
+        self.progress('Failsafe truth descent: maximum speed=%.2fm/s minimum pitch=%.2fdeg' %
+                      (max(m.vd for m in descent), min(math.degrees(m.pitch) for m in descent)))
+
+    def TailsitterFailsafeRC(self):
+        '''RC loss during AUTO vertical takeoff must abort to QLAND and disarm'''
+        self.setup_tailsitter_failsafe_mission()
+        self.set_parameters({'THR_FAILSAFE': 1, 'FS_SHORT_ACTN': 0,
+                             'FS_LONG_ACTN': 1, 'FS_LONG_TIMEOUT': 5})
+        self.arm_vehicle()
+        self.wait_altitude(10, 20, relative=True, timeout=60)
+        self.assert_mode('AUTO')
+        self.wait_current_waypoint(1)
+        self.set_parameter('SIM_RC_FAIL', 1)
+        self.wait_mode('QLAND', timeout=15)
+        self.wait_statustext('RC Long Failsafe On', check_context=True)
+        self.assert_tailsitter_failsafe_landed()
+        self.set_parameter('SIM_RC_FAIL', 0)
+        self.progress('RC loss: AUTO VTOL takeoff aborted to QLAND and landed')
+
+    def TailsitterFailsafeGCS(self):
+        '''GCS loss during AUTO fixed-wing flight must return and land vertically'''
+        self.setup_tailsitter_failsafe_mission()
+        self.set_parameters({'FS_GCS_ENABL': 1, 'FS_LONG_ACTN': 1,
+                             'FS_LONG_TIMEOUT': 5, 'MAV_GCS_SYSID': self.mav.source_system,
+                             'Q_RTL_MODE': 1})
+        self.arm_vehicle()
+        self.wait_current_waypoint(3, timeout=180)
+        self.wait_extended_sys_state(mavutil.mavlink.MAV_VTOL_STATE_FW,
+                                     mavutil.mavlink.MAV_LANDED_STATE_IN_AIR)
+        self.delay_sim_time(3)
+        self.assert_mode('AUTO')
+        heartbeat_interval = self.heartbeat_interval_ms()
+        try:
+            self.set_heartbeat_rate(0)
+            self.wait_mode('RTL', timeout=15)
+            self.wait_statustext('GCS Failsafe On', check_context=True)
+            self.wait_mode('QRTL', timeout=180)
+            self.assert_tailsitter_failsafe_landed(timeout=240)
+            self.wait_distance_to_home(0, 5, timeout=10)
+        finally:
+            self.set_heartbeat_interval_ms(heartbeat_interval)
+        self.progress('GCS loss: AUTO fixed-wing flight returned through RTL/QRTL and landed at home')
+
+    def TailsitterFailsafeBattery(self):
+        '''Critical battery detection during AUTO takeoff must land without power interruption'''
+        self.setup_tailsitter_failsafe_mission()
+        self.set_parameters({'BATT_LOW_VOLT': 0, 'BATT_LOW_MAH': 0,
+                             'BATT_CRT_VOLT': 0, 'BATT_CRT_MAH': 0,
+                             'BATT_FS_LOW_ACT': 0, 'BATT_FS_CRT_ACT': 4, 'BATT_LOW_TIMER': 2})
+        self.arm_vehicle()
+        self.wait_altitude(10, 20, relative=True, timeout=60)
+        self.assert_mode('AUTO')
+        self.wait_current_waypoint(1)
+        # Raise the detection threshold; preserve thrust to test the failsafe action independently.
+        self.set_parameter('BATT_CRT_VOLT', 50)
+        self.wait_mode('QLAND', timeout=10)
+        self.wait_statustext('Battery 1 is critical', check_context=True)
+        self.assert_tailsitter_failsafe_landed()
+        self.progress('Critical battery detection: AUTO VTOL takeoff aborted to QLAND and landed')
+
+    def TailsitterGPSRecovery(self):
+        '''Bridge a short GPS outage during AUTO VTOL climb, then complete the mission'''
+        self.setup_tailsitter_failsafe_mission()
+        gps = {name: self.get_parameter(name) for name in ('SIM_GPS1_ENABLE', 'SIM_GPS2_ENABLE')}
+        self.set_message_rate_hz('GPS_RAW_INT', 5)
+        self.arm_vehicle()
+        self.wait_altitude(10, 20, relative=True, timeout=60)
+        self.wait_current_waypoint(1)
+        start_sample = len(self.tailsitter_failsafe_truth)
+        self.set_parameters({'SIM_GPS1_ENABLE': 0, 'SIM_GPS2_ENABLE': 0})
+        lost_fix = False
+        try:
+            start = self.get_sim_time()
+            while self.get_sim_time_cached() - start < 8:
+                message = self.assert_receive_message('GPS_RAW_INT')
+                lost_fix |= message.fix_type < 3
+                self.assert_mode('AUTO')
+            outage = self.tailsitter_failsafe_truth[start_sample:]
+            if not lost_fix or len(outage) < 20:
+                raise NotAchievedException('GPS outage was not observed')
+            if any(math.degrees(m.pitch) < 70 or m.alt - self.tailsitter_failsafe_ground_alt < 8 or
+                   math.hypot(m.vn, m.ve) > 2 for m in outage):
+                raise NotAchievedException('Lost physical VTOL control during the short GPS outage')
+        finally:
+            self.set_parameters(gps)
+        self.wait_gps_fix_type_gte(3)
+        self.wait_waypoint(1, 5, allow_skip=False, max_dist=5, timeout=500)
+        self.assert_tailsitter_failsafe_landed(timeout=500)
+        self.wait_distance_to_home(0, 5, timeout=10)
+        self.progress('Short GPS outage: preserved VTOL control, recovered GPS and completed the AUTO mission')
+
+    def TailsitterIMUFailover(self):
+        '''Stop the first IMU and require accurate attitude, the AUTO route and vertical landing'''
+        self.setup_tailsitter_failsafe_mission(
+            parameters={'AHRS_EKF_TYPE': 3, 'EK3_ENABLE': 1, 'EK3_IMU_MASK': 3, 'EK3_PRIMARY': 0})
+        self.set_message_rate_hz('ATTITUDE_QUATERNION', 20)
+        errors = []
+
+        def check_attitude(mav, message):
+            if message.get_type() != 'SIM_STATE' or message.alt - self.tailsitter_failsafe_ground_alt < 3:
+                return
+            attitude = mav.messages.get('ATTITUDE_QUATERNION')
+            if attitude is None:
+                return
+            physical = Quaternion([message.q1, message.q2, message.q3, message.q4])
+            estimated = Quaternion([attitude.q1, attitude.q2, attitude.q3, attitude.q4])
+            physical.normalize()
+            estimated.normalize()
+            dot = abs(sum(a * b for a, b in zip(physical.q, estimated.q)))
+            if not math.isfinite(dot):
+                raise NotAchievedException('Non-finite attitude after the IMU failure')
+            errors.append(math.degrees(2 * math.acos(min(1.0, dot))))
+
+        self.install_message_hook_context(check_attitude)
+        self.arm_vehicle()
+        self.wait_altitude(20, 30, relative=True, timeout=60)
+        self.wait_current_waypoint(1)
+        # The masks stop sensor updates; ACCEL1_FAIL instead generates constant readings.
+        fault_time = self.get_sim_time() * 1e6
+        self.set_parameters({'SIM_ACC_FAIL_MSK': 1, 'SIM_GYR_FAIL_MSK': 1})
+        try:
+            # An EKF lane can change its active IMU without changing the lane number.
+            self.wait_waypoint(1, 5, allow_skip=False, max_dist=5, timeout=500)
+            self.assert_tailsitter_failsafe_landed(timeout=500)
+            self.wait_distance_to_home(0, 5, timeout=10)
+            if len(errors) < 50 or max(errors) > 5:
+                raise NotAchievedException('Attitude disagreed with the physical model after the IMU failure')
+            log = self.dfreader_for_current_onboard_log()
+            failed = healthy = False
+            while True:
+                message = log.recv_match(type='IMU')
+                if message is None:
+                    break
+                if message.TimeUS < fault_time:
+                    continue
+                failed |= message.I == 0 and message.GH == 0 and message.AH == 0
+                healthy |= message.I == 1 and message.GH == 1 and message.AH == 1
+            if not failed or not healthy:
+                raise NotAchievedException('The log did not confirm the failed IMU and healthy reserve')
+            self.progress('IMU failure maximum attitude error=%.2fdeg' % max(errors))
+        finally:
+            self.set_parameters({'SIM_ACC_FAIL_MSK': 0, 'SIM_GYR_FAIL_MSK': 0})
+        self.progress('First IMU stopped: retained attitude accuracy and completed the AUTO mission on the reserve')
 
     def TailsitterDualMotorSetup(self):
         '''Check the non-vectored dual-motor tailsitter configuration and elevon mixing'''
@@ -1314,6 +1538,7 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         )
         self.reboot_sitl()
         self.change_mode('MANUAL')
+        self.wait_attitude(despitch=90, tolerance=5, timeout=10)
         self.set_parameters({'RC1_MIN': 1000, 'RC1_MAX': 2000, 'RC1_TRIM': 1500,
                              'RC2_MIN': 1000, 'RC2_MAX': 2000, 'RC2_TRIM': 1500})
         self.set_rc(1, 1500)
@@ -1348,6 +1573,7 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         motors_before = [self.get_servo_channel_value(channel) for channel in (5, 6)]
         self.change_mode('QHOVER')
         self.delay_sim_time(2)
+        self.wait_attitude(despitch=90, tolerance=5, timeout=10)
         motors_after = [self.get_servo_channel_value(channel) for channel in (5, 6)]
         if motors_before != motors_after:
             raise NotAchievedException('Disarmed motor outputs changed on entering VTOL')
@@ -3350,6 +3576,11 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             self.CopterTailsitter,
             self.TailsitterAutoMission,
             self.TailsitterDualMotorSetup,
+            self.TailsitterFailsafeRC,
+            self.TailsitterFailsafeGCS,
+            self.TailsitterFailsafeBattery,
+            self.TailsitterGPSRecovery,
+            self.TailsitterIMUFailover,
             self.ICEngine,
             self.ICEngineMission,
             self.ICEngineRPMGovernor,
