@@ -76,6 +76,10 @@ class VehicleInfo(object):
                 "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-tailsitter-dual.parm"],
             },
+            "plane-tailsitter-dual-real": {
+                "waf_target": "bin/ardutailsitter",
+                "default_params_filename": "../Frame_params/Tailsitters/DualMotorCubeOrangePlus.parm",
+            },
             "plane-jet": {
                 "waf_target": "bin/ardutailsitter",
                 "default_params_filename": ["models/plane.parm", "default_params/plane-jet.parm"],

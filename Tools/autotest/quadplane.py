@@ -11,7 +11,7 @@ import math
 import copy
 from collections import namedtuple
 
-from pymavlink import mavutil
+from pymavlink import mavparm, mavutil
 from pymavlink.quaternion import Quaternion
 from pymavlink.rotmat import Vector3
 
@@ -1577,6 +1577,142 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         motors_after = [self.get_servo_channel_value(channel) for channel in (5, 6)]
         if motors_before != motors_after:
             raise NotAchievedException('Disarmed motor outputs changed on entering VTOL')
+
+    def TailsitterRealProfileSetup(self):
+        '''Check the real CubeOrangePlus profile and its mixer without arming'''
+        profile_path = os.path.join(self.rootdir(), 'Tools', 'Frame_params', 'Tailsitters',
+                                    'DualMotorCubeOrangePlus.parm')
+        profile = mavparm.MAVParmDict()
+        if not profile.load(profile_path):
+            raise PreconditionFailedException('Could not read real tailsitter profile')
+
+        def check_disarmed(mav, message):
+            if (message.get_type() == 'HEARTBEAT' and
+                    message.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED):
+                raise NotAchievedException('Real-profile setup test must remain disarmed')
+
+        self.install_message_hook(check_disarmed)
+        try:
+            # Use the hardware profile directly, without the generic flight-test defaults.
+            # No arming checks, calibration values or hardware sensor settings are overridden.
+            # Expose inactive groups to verify their stored defaults as well.
+            self.customise_SITL_commandline(
+                ['--unhide-groups'],
+                defaults_filepath=profile_path,
+                model='plane-tailsitter-dual-real',
+                wipe=True,
+            )
+            # CubeOrangePlus has three IMUs; SITL's default of two clamps EK3_IMU_MASK to 3.
+            # This simulator-only setting leaves the real profile and its sensor choices intact.
+            self.set_parameter('SIM_IMU_COUNT', 3)
+            self.reboot_sitl()
+            runtime, _ = self.download_parameters(self.sysid_thismav(), 1)
+            missing = sorted(set(profile) - set(runtime))
+            self.progress('Profile parameters not exposed by this SITL build: %s' % ', '.join(missing))
+            with open(self.buildlogs_path('TailsitterRealProfileSetup-missing-parameters.txt'), 'w') as missing_file:
+                missing_file.write('\n'.join(missing) + '\n')
+            # The harness requests all telemetry streams at 10 Hz after starting/rebooting SITL.
+            # These runtime rates are changed by REQUEST_DATA_STREAM, not by the profile loader.
+            telemetry_rates = {'MAV1_' + stream: self.sitl_streamrate() for stream in
+                               ('ADSB', 'EXTRA1', 'EXTRA2', 'EXTRA3', 'EXT_STAT', 'POSITION',
+                                'RAW_CTRL', 'RAW_SENS', 'RC_CHAN')}
+            self.assert_parameter_values(telemetry_rates)
+            self.progress('Harness-controlled telemetry rates: %s' % ', '.join(sorted(telemetry_rates)))
+            mismatches = []
+            for name, expected in profile.items():
+                if name not in runtime or name in telemetry_rates:
+                    continue
+                if not math.isclose(runtime[name], expected, rel_tol=1e-6, abs_tol=1e-6):
+                    mismatches.append('%s: expected=%g actual=%g' % (name, expected, runtime[name]))
+            if mismatches:
+                raise NotAchievedException('Real profile runtime mismatch: %s' % '; '.join(mismatches))
+            self.progress('Verified %u unchanged profile values; %u harness telemetry rates; '
+                          '%u unavailable in SITL; %u profile parameters total' %
+                          (len(profile) - len(missing) - len(telemetry_rates),
+                           len(telemetry_rates), len(missing), len(profile)))
+
+            self.assert_parameter_values({
+                'Q_ENABLE': 1,
+                'Q_FRAME_CLASS': 10,
+                'Q_TAILSIT_ENABLE': 1,
+                'Q_TAILSIT_MOTMX': 0,
+                'Q_TILT_ENABLE': 0,
+                'AHRS_ORIENTATION': 6,
+                'Q_M_SPIN_ARM': 0.1,
+                'ARMING_SKIPCHK': 0,
+                'GPS_PRIMARY': 0,
+                'SERVO1_FUNCTION': 73,
+                'SERVO2_FUNCTION': 74,
+                'SERVO3_FUNCTION': 60,
+                'SERVO4_FUNCTION': 60,
+                'SERVO5_FUNCTION': 77,
+                'SERVO6_FUNCTION': 77,
+                'SERVO5_REVERSED': 1,
+                'SERVO6_REVERSED': 1,
+                'SERVO7_FUNCTION': 78,
+                'SERVO8_FUNCTION': 78,
+                'SERVO7_REVERSED': 0,
+                'SERVO8_REVERSED': 0,
+            }, epsilon=1e-6)
+
+            trims = {channel: int(runtime['RC%u_TRIM' % channel]) for channel in range(1, 17)}
+            trims[3] = int(runtime['RC3_MIN'])
+            self.set_rc_from_map(trims)
+            self.change_mode('MANUAL')
+            self.set_message_rate_hz('SERVO_OUTPUT_RAW', 20)
+            self.delay_sim_time(1)
+            motor_min = runtime['Q_M_PWM_MIN']
+
+            def check_outputs(mav, message):
+                if message.get_type() != 'SERVO_OUTPUT_RAW':
+                    return
+                for channel in (1, 2):
+                    pwm = getattr(message, 'servo%u_raw' % channel)
+                    if pwm != motor_min:
+                        raise NotAchievedException('Disarmed motor %u output=%u, expected=%u' %
+                                                   (channel, pwm, motor_min))
+                if message.servo5_raw != message.servo6_raw or message.servo7_raw != message.servo8_raw:
+                    raise NotAchievedException('Duplicate elevon outputs do not match: %s' % message)
+
+            self.install_message_hook(check_outputs)
+            try:
+                neutral = self.assert_receive_message('SERVO_OUTPUT_RAW')
+                self.set_rc(1, trims[1] + 300)
+                self.delay_sim_time(1)
+                roll = self.assert_receive_message('SERVO_OUTPUT_RAW')
+                roll_left = roll.servo5_raw - neutral.servo5_raw
+                roll_right = roll.servo7_raw - neutral.servo7_raw
+                # Left linkage reversal makes both PWM deltas positive for positive roll.
+                if min(roll_left, roll_right) < 50:
+                    raise NotAchievedException('Wrong real-profile roll mixer: left=%d right=%d' %
+                                               (roll_left, roll_right))
+
+                self.set_rc_from_map({1: trims[1], 2: trims[2] + 300})
+                self.delay_sim_time(1)
+                pitch = self.assert_receive_message('SERVO_OUTPUT_RAW')
+                pitch_left = pitch.servo5_raw - neutral.servo5_raw
+                pitch_right = pitch.servo7_raw - neutral.servo7_raw
+                # RC2 and the left linkage are reversed in the hardware profile.
+                if pitch_left < 50 or pitch_right > -50:
+                    raise NotAchievedException('Wrong real-profile pitch mixer: left=%d right=%d' %
+                                               (pitch_left, pitch_right))
+                self.set_rc(2, trims[2])
+
+                for pwm in (1100, 1500, 1900):
+                    self.set_rc(10, pwm)
+                    self.wait_servo_channel_value(3, pwm)
+                    self.wait_servo_channel_value(4, pwm)
+                self.set_rc(10, trims[10])
+
+                self.change_mode('QHOVER')
+                self.delay_sim_time(5)
+                self.change_mode('MANUAL')
+                self.delay_sim_time(2)
+                self.assert_receive_message('SERVO_OUTPUT_RAW')
+            finally:
+                self.remove_message_hook(check_outputs)
+        finally:
+            self.remove_message_hook(check_disarmed)
 
     def setup_ICEngine_vehicle(self):
         '''restarts SITL with an IC Engine setup'''
@@ -3576,6 +3712,7 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             self.CopterTailsitter,
             self.TailsitterAutoMission,
             self.TailsitterDualMotorSetup,
+            self.TailsitterRealProfileSetup,
             self.TailsitterFailsafeRC,
             self.TailsitterFailsafeGCS,
             self.TailsitterFailsafeBattery,

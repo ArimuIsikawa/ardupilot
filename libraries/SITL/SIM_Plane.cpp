@@ -95,6 +95,7 @@ Plane::Plane(const char *frame_str) :
     }
     if (strstr(frame_str, "-tailsitter-dual")) {
         dual_motor_tailsitter = true;
+        dual_motor_tailsitter_real = strstr(frame_str, "-tailsitter-dual-real") != nullptr;
         if (colon == nullptr) {
             // A balanced flying wing.
             coefficient.CGOffset.zero();
@@ -420,9 +421,19 @@ Vector3f Plane::getForce(float inputAileron, float inputElevator, float inputRud
 
 void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel)
 {
-    float aileron  = filtered_servo_angle(input, 0);
-    float elevator = filtered_servo_angle(input, 1);
-    float rudder   = filtered_servo_angle(input, 3);
+    float aileron;
+    float elevator;
+    float rudder;
+    if (dual_motor_tailsitter_real) {
+        // Paired elevons on outputs 5/6 and 7/8; the left linkage reverses servo motion.
+        aileron = -(filtered_servo_angle(input, 4) + filtered_servo_angle(input, 5)) * 0.5f;
+        elevator = (filtered_servo_angle(input, 6) + filtered_servo_angle(input, 7)) * 0.5f;
+        rudder = 0;
+    } else {
+        aileron = filtered_servo_angle(input, 0);
+        elevator = filtered_servo_angle(input, 1);
+        rudder = filtered_servo_angle(input, 3);
+    }
     bool launch_triggered = input.servos[6] > 1700;
     float throttle;
     if (reverse_elevator_rudder) {
@@ -430,7 +441,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         rudder = -rudder;
     }
     if (dual_motor_tailsitter) {
-        // Left/right elevons on outputs 1/2, with positive deflection giving nose-up pitch.
+        // Positive left/right elevon deflection gives nose-up pitch.
         const float left = aileron;
         const float right = elevator;
         aileron = (right - left) * 0.5f;
@@ -477,13 +488,15 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     float differential_thrust = 0;
     if (dual_motor_tailsitter) {
         // Each fixed motor provides half the total thrust, at a quarter-span from the centreline.
-        const float left = filtered_servo_range(input, 4);
-        const float right = filtered_servo_range(input, 5);
+        const uint8_t left_channel = dual_motor_tailsitter_real ? 0 : 4;
+        const uint8_t right_channel = dual_motor_tailsitter_real ? 1 : 5;
+        const float left = filtered_servo_range(input, left_channel);
+        const float right = filtered_servo_range(input, right_channel);
         throttle = (left + right) * 0.5f;
         differential_thrust = (left - right) * 0.5f * thrust_scale;
-        motor_mask |= (1U << 4) | (1U << 5);
-        rpm[4] = left * 7000;
-        rpm[5] = right * 7000;
+        motor_mask |= (1U << left_channel) | (1U << right_channel);
+        rpm[left_channel] = left * 7000;
+        rpm[right_channel] = right * 7000;
     } else if (reverse_thrust) {
         throttle = filtered_servo_angle(input, 2);
     } else {

@@ -1,0 +1,1 @@
+Tools/autotest/sim_vehicle.py -v ArduTailSitter -f plane-tailsitter-dual -L Dalby -I1

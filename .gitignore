@@ -129,6 +129,7 @@ dumpcore*out
 build.tmp.binaries/
 tasklist.json
 modules/esp_idf
+*.param
 
 # lua-language-server linter
 ScriptingDocs.md
