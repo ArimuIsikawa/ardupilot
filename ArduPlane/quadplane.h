@@ -524,6 +524,8 @@ private:
         uint32_t last_run_ms;
         float pos1_speed_limit_ms;
         bool done_accel_init;
+        bool land_at_stop;
+        uint32_t land_stop_start_ms;
         Vector2f velocity_match_ms;
         uint32_t last_velocity_match_ms;
         float target_speed_ms;
@@ -605,6 +607,7 @@ private:
         FS_RTL=(1<<20),
         DISARMED_TILT_UP=(1<<21),
         SCALE_FF_ANGLE_P=(1<<22),
+        TAILSIT_LAND_AT_STOP=(1<<23),
     };
     bool option_is_set(Option option) const {
         return (options.get() & int32_t(option)) != 0;

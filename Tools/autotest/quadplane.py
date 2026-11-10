@@ -1331,6 +1331,87 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
                        min(s.hud_pitch for s in landing)))
         self.progress('Tailsitter AUTO takeoff, transitions, out-and-back flight and landing OK')
 
+    def tailsitter_land_at_stop(self, zero_coordinates=False):
+        '''Check braking and a vertical landing at the post-transition stopping point'''
+        self.setup_tailsitter_failsafe_mission(parameters={'Q_OPTIONS': 1 << 23})
+        if zero_coordinates:
+            mission_path = os.path.join(testdir, 'ArduPlane_Tests', 'TailsitterAutoMission', 'mission.txt')
+            items = self.mission_from_filepath(mission_path)
+            items[-1].x = 0
+            items[-1].y = 0
+            self.check_mission_upload_download(items)
+
+        self.set_message_rate_hz('GLOBAL_POSITION_INT', 20)
+        events = {}
+        samples = []
+        auto_mode = self.get_mode_from_mode_mapping('AUTO')
+
+        def collect_landing(mav, message):
+            if message.get_type() == 'HEARTBEAT' and message.custom_mode != auto_mode:
+                raise NotAchievedException('Land-at-stop mission left AUTO')
+            position = mav.messages.get('GLOBAL_POSITION_INT')
+            if position is None:
+                return
+            if message.get_type() == 'EXTENDED_SYS_STATE':
+                if message.vtol_state == mavutil.mavlink.MAV_VTOL_STATE_TRANSITION_TO_MC:
+                    events.setdefault('transition_start', position)
+                elif message.vtol_state == mavutil.mavlink.MAV_VTOL_STATE_MC and 'transition_start' in events:
+                    events.setdefault('transition_end', position)
+            elif message.get_type() == 'STATUSTEXT':
+                names = {'VTOL landing brake': 'brake',
+                         'VTOL landing point set': 'point',
+                         'Land descend started': 'descend'}
+                if message.text in names:
+                    events.setdefault(names[message.text], position)
+            elif message.get_type() == 'GLOBAL_POSITION_INT' and 'point' in events:
+                samples.append(message)
+
+        self.install_message_hook_context(collect_landing)
+        self.arm_vehicle()
+        self.wait_disarmed(timeout=600)
+        self.remove_message_hook(collect_landing)
+        self.context_get().message_hooks.remove(collect_landing)
+        for name in ('transition_start', 'transition_end', 'brake', 'point', 'descend'):
+            if name not in events:
+                raise NotAchievedException('Missing land-at-stop event: %s' % name)
+        point = events['point']
+        # Allow for the 10 Hz transition-state and 20 Hz position telemetry.
+        if point.time_boot_ms - events['transition_end'].time_boot_ms < 800:
+            raise NotAchievedException('Landing point selected before stopping after the transition')
+        if events['descend'].time_boot_ms < point.time_boot_ms:
+            raise NotAchievedException('Descent started before selecting the stopping point')
+        if math.hypot(point.vx, point.vy) > 65 or abs(point.vz) > 65:
+            raise NotAchievedException('Landing point selected while still moving: %s' % point)
+
+        def location(position):
+            return mavutil.location(position.lat * 1e-7, position.lon * 1e-7)
+
+        old_target = (location(events['transition_start']) if zero_coordinates else self.sitl_start_location())
+        separation = self.get_distance(location(point), old_target)
+        if separation < 10:
+            raise NotAchievedException('Test did not separate the stopping point from the old target')
+        if not samples or samples[-1].relative_alt > 1000:
+            raise NotAchievedException('Did not finish the land-at-stop mission on the ground')
+        max_distance = max(self.get_distance(location(point), location(s)) for s in samples)
+        if max_distance > 3:
+            raise NotAchievedException('Aircraft returned away from its stopping point: %.2fm' % max_distance)
+        descent = [s for s in samples if 3000 < s.relative_alt < point.relative_alt - 3000 and s.vz > 20]
+        if not descent or max(math.hypot(s.vx, s.vy) for s in descent) > 100:
+            raise NotAchievedException('Landing descent was not vertical')
+        for message in self.context_collection('STATUSTEXT'):
+            if 'Transition' in message.text and ('timeout' in message.text or 'roll error' in message.text):
+                raise NotAchievedException('Transition used a fallback: %s' % message.text)
+        self.progress('Stopping point %.2fm from old target; maximum landing displacement %.2fm' %
+                      (separation, max_distance))
+
+    def TailsitterLandAtStop(self):
+        '''Land where a tailsitter stops after transitioning, without returning to the landing waypoint'''
+        self.tailsitter_land_at_stop()
+
+    def TailsitterLandAtStopZeroCoordinates(self):
+        '''Keep the post-transition stopping point when VTOL_LAND has zero latitude and longitude'''
+        self.tailsitter_land_at_stop(zero_coordinates=True)
+
     def setup_tailsitter_failsafe_mission(self, parameters=None):
         '''Start an isolated dual-motor tailsitter with the validated AUTO mission'''
         mission_dir = os.path.join(testdir, 'ArduPlane_Tests', 'TailsitterAutoMission')
@@ -3711,6 +3792,8 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             self.Tailsitter,
             self.CopterTailsitter,
             self.TailsitterAutoMission,
+            self.TailsitterLandAtStop,
+            self.TailsitterLandAtStopZeroCoordinates,
             self.TailsitterDualMotorSetup,
             self.TailsitterRealProfileSetup,
             self.TailsitterFailsafeRC,

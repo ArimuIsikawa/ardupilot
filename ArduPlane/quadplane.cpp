@@ -281,6 +281,7 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
     // @Bitmask: 20: Force RTL mode-forces RTL mode on rc failsafe in VTOL modes overriding bit 5(USE_QRTL)
     // @Bitmask: 21: Tilt rotor-tilt motors up when disarmed in FW modes (except manual) to prevent ground strikes.
     // @Bitmask: 22: Scale FF by the ratio of VTOL to plane angle P gains in Position 1 phase of transition into VTOL flight as well as reducing VTOL angle P based on airspeed.
+    // @Bitmask: 23: TailsitterLandAtStop-in AUTO VTOL_LAND brake after the back transition and land at the stopping point instead of returning to the landing waypoint. The waypoint is still used for the fixed wing approach.
     AP_GROUPINFO("OPTIONS", 58, QuadPlane, options, 0),
 
     AP_SUBGROUPEXTENSION("",59, QuadPlane, var_info2),
@@ -2360,6 +2361,9 @@ void QuadPlane::vtol_position_controller(void)
 
     const Location &loc = plane.next_WP_loc;
     uint32_t now_ms = AP_HAL::millis();
+    const bool land_at_stop = poscontrol.land_at_stop &&
+        plane.control_mode == &plane.mode_auto &&
+        plane.mission.get_current_nav_cmd().id == MAV_CMD_NAV_VTOL_LAND;
 
     // distance that we switch to QPOS_POSITION2
     const float position2_dist_threshold_m = 10.0;
@@ -2574,7 +2578,9 @@ void QuadPlane::vtol_position_controller(void)
             break;
         }
 
-        const Vector2f wp_distance_ne_m = plane.current_loc.get_distance_NE(loc);
+        // In land-at-stop mode, control velocity without pulling back towards
+        // the waypoint selected before the tailsitter back transition.
+        const Vector2f wp_distance_ne_m = land_at_stop ? Vector2f{} : plane.current_loc.get_distance_NE(loc);
         const float wp_distance_m = wp_distance_ne_m.length();
         const Vector2f rel_groundspeed_vector_ne_ms = landing_closing_velocity_NE_ms();
         const float rel_groundspeed_sq = rel_groundspeed_vector_ne_ms.length_squared();
@@ -2614,7 +2620,9 @@ void QuadPlane::vtol_position_controller(void)
         }
 
         // run fixed wing navigation
-        plane.nav_controller->update_waypoint(plane.current_loc, loc);
+        if (!land_at_stop) {
+            plane.nav_controller->update_waypoint(plane.current_loc, loc);
+        }
 
         Vector2f target_speed_ne_ms;
         Vector2f target_accel_ne_mss;
@@ -2666,7 +2674,9 @@ void QuadPlane::vtol_position_controller(void)
         }
         const float target_speed_ms = target_speed_ne_ms.length();
 
-        target_speed_ne_ms += landing_velocity_ne_ms;
+        if (!land_at_stop) {
+            target_speed_ne_ms += landing_velocity_ne_ms;
+        }
         poscontrol.target_speed_ms = target_speed_ms;
         poscontrol.target_accel_mss = approach_accel_mss;
 
@@ -2697,6 +2707,9 @@ void QuadPlane::vtol_position_controller(void)
              */
             poscontrol.done_accel_init = true;
             pos_control->set_accel_desired_NE_mss(target_accel_ne_mss);
+            if (land_at_stop) {
+                gcs().send_text(MAV_SEVERITY_INFO, "VTOL landing brake");
+            }
         }
         
         // nav roll and pitch are controller by position controller
@@ -2720,11 +2733,35 @@ void QuadPlane::vtol_position_controller(void)
                                                                plane.nav_pitch_cd,
                                                                target_yaw_deg * 100, true);
         } else {
+            const float yaw_rate_cds = land_at_stop ? get_pilot_input_yaw_rate_cds() : desired_auto_yaw_rate_cds();
             attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw_cd(plane.nav_roll_cd,
                                                                           plane.nav_pitch_cd,
-                                                                          desired_auto_yaw_rate_cds() + get_weathervane_yaw_rate_cds());
+                                                                          yaw_rate_cds + get_weathervane_yaw_rate_cds());
         }
-        if ((plane.auto_state.wp_distance < position2_dist_threshold_m) && tiltrotor.tilt_angle_achieved() &&
+        if (land_at_stop) {
+            // Require a settled hover, not just a completed pitch transition.
+            Vector3f velocity_ned_ms;
+            const bool stopped = ahrs.get_velocity_NED(velocity_ned_ms) &&
+                velocity_ned_ms.xy().length_squared() < sq(0.5f) &&
+                fabsf(velocity_ned_ms.z) < 0.5f &&
+                ahrs_view->cos_roll() * ahrs_view->cos_pitch() > cosf(radians(10));
+            if (!stopped) {
+                poscontrol.land_stop_start_ms = 0;
+            } else if (poscontrol.land_stop_start_ms == 0) {
+                poscontrol.land_stop_start_ms = now_ms;
+            } else if (now_ms - poscontrol.land_stop_start_ms >= 1000) {
+                Location stopping_loc;
+                if (ahrs.get_location(stopping_loc)) {
+                    plane.next_WP_loc.lat = stopping_loc.lat;
+                    plane.next_WP_loc.lng = stopping_loc.lng;
+                    poscontrol.correction_ne_m.zero();
+                    poscontrol.target_vel_ms.zero();
+                    setup_target_position();
+                    poscontrol.set_state(QPOS_POSITION2);
+                    gcs().send_text(MAV_SEVERITY_INFO, "VTOL landing point set");
+                }
+            }
+        } else if ((plane.auto_state.wp_distance < position2_dist_threshold_m) && tiltrotor.tilt_angle_achieved() &&
             fabsf(rel_groundspeed_sq) < sq(3 * position2_target_speed_ms)) {
             // if continuous tiltrotor only advance to position 2 once tilts have finished moving
             poscontrol.set_state(QPOS_POSITION2);
@@ -3444,6 +3481,10 @@ bool QuadPlane::do_vtol_land(const AP_Mission::Mission_Command& cmd)
         return false;
     }
 
+    poscontrol.land_at_stop = tailsitter.enabled() &&
+        cmd.id == MAV_CMD_NAV_VTOL_LAND && option_is_set(Option::TAILSIT_LAND_AT_STOP);
+    poscontrol.land_stop_start_ms = 0;
+
     plane.set_next_WP(cmd.content.location);
     // initially aim for current altitude
     plane.next_WP_loc.copy_alt_from(plane.current_loc);
@@ -3663,7 +3704,14 @@ bool QuadPlane::verify_vtol_land(void)
                 // set height to mission height, so we can use the mission
                 // WP height for triggering land final if no rangefinder
                 // available
-                plane.set_next_WP(plane.mission.get_current_nav_cmd().content.location);
+                Location landing_loc = plane.mission.get_current_nav_cmd().content.location;
+                if (poscontrol.land_at_stop) {
+                    // Keep the stopping point while restoring the mission's
+                    // landing altitude for the final-phase height reference.
+                    landing_loc.lat = plane.next_WP_loc.lat;
+                    landing_loc.lng = plane.next_WP_loc.lng;
+                }
+                plane.set_next_WP(landing_loc);
             } else {
                 plane.set_next_WP(plane.next_WP_loc);
                 plane.next_WP_loc.copy_alt_from(ahrs.get_home());
