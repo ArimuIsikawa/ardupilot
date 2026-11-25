@@ -2628,8 +2628,22 @@ void QuadPlane::vtol_position_controller(void)
         Vector2f target_accel_ne_mss;
         bool have_target_yaw = false;
         float target_yaw_deg;
-        const float approach_accel_mss = MIN(accel_needed(wp_distance_m, sq(closing_groundspeed_ms)), transition_decel_mss * 2);
-        if (wp_distance_m > 0.1) {
+        float approach_accel_mss = MIN(accel_needed(wp_distance_m, sq(closing_groundspeed_ms)), transition_decel_mss * 2);
+        if (land_at_stop) {
+            if (!pos_control->NE_is_active()) {
+                pos_control->NE_init_controller();
+            }
+            // Brake the measured velocity. Tracking the old velocity trajectory
+            // can otherwise accelerate the aircraft again after aerodynamic drag
+            // has already slowed it more quickly than the shaped reference.
+            const Vector2f brake_velocity_ne_ms = ahrs.groundspeed_vector();
+            const float brake_speed_ms = brake_velocity_ne_ms.length();
+            approach_accel_mss = MIN(transition_decel_mss,
+                sqrt_controller(brake_speed_ms, 1.0f, pos_control->get_shaping_jerk_NE_msss(), plane.G_Dt));
+            if (is_positive(brake_speed_ms)) {
+                target_accel_ne_mss = brake_velocity_ne_ms * (-approach_accel_mss / brake_speed_ms);
+            }
+        } else if (wp_distance_m > 0.1) {
             Vector2f diff_wp_norm = wp_distance_ne_m.normalized();
             target_speed_ne_ms = diff_wp_norm * approach_speed_ms;
             target_accel_ne_mss = diff_wp_norm * (-approach_accel_mss);
@@ -2692,9 +2706,16 @@ void QuadPlane::vtol_position_controller(void)
         }
 
         // use input shaping and abide by accel and jerk limits
-        pos_control->input_vel_accel_NE_m(target_speed_ne_ms, target_accel_ne_mss);
-        // During POS1, we only want to control velocity and acceleration
-        pos_control->NE_stop_pos_stabilisation();
+        if (land_at_stop) {
+            pos_control->input_accel_NE_m(target_accel_ne_mss);
+            // Only acceleration is controlled during braking. Do not retain
+            // pull-up lean as an integrator preload or try to regain speed.
+            pos_control->NE_stop_vel_stabilisation();
+        } else {
+            pos_control->input_vel_accel_NE_m(target_speed_ne_ms, target_accel_ne_mss);
+            // During POS1, we only want to control velocity and acceleration
+            pos_control->NE_stop_pos_stabilisation();
+        }
 
         // run horizontal velocity controller
         run_xy_controller(MAX(approach_accel_mss, transition_decel_mss)*1.5);
@@ -2706,9 +2727,10 @@ void QuadPlane::vtol_position_controller(void)
               quickly at the start of POSITION1
              */
             poscontrol.done_accel_init = true;
-            pos_control->set_accel_desired_NE_mss(target_accel_ne_mss);
             if (land_at_stop) {
                 gcs().send_text(MAV_SEVERITY_INFO, "VTOL landing brake");
+            } else {
+                pos_control->set_accel_desired_NE_mss(target_accel_ne_mss);
             }
         }
         

@@ -1331,9 +1331,12 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
                        min(s.hud_pitch for s in landing)))
         self.progress('Tailsitter AUTO takeoff, transitions, out-and-back flight and landing OK')
 
-    def tailsitter_land_at_stop(self, zero_coordinates=False):
+    def tailsitter_land_at_stop(self, zero_coordinates=False, parameters=None):
         '''Check braking and a vertical landing at the post-transition stopping point'''
-        self.setup_tailsitter_failsafe_mission(parameters={'Q_OPTIONS': 1 << 23})
+        settings = {'Q_OPTIONS': 1 << 23}
+        if parameters is not None:
+            settings.update(parameters)
+        self.setup_tailsitter_failsafe_mission(parameters=settings)
         if zero_coordinates:
             mission_path = os.path.join(testdir, 'ArduPlane_Tests', 'TailsitterAutoMission', 'mission.txt')
             items = self.mission_from_filepath(mission_path)
@@ -1375,6 +1378,17 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             if name not in events:
                 raise NotAchievedException('Missing land-at-stop event: %s' % name)
         point = events['point']
+        braking_time_s = (point.time_boot_ms - events['transition_end'].time_boot_ms) * 0.001
+        if parameters is not None:
+            initial = events['transition_end']
+            speed_ms = math.hypot(initial.vx, initial.vy) * 0.01
+            decel_mss = settings['Q_TRANS_DECEL']
+            jerk_msss = settings['Q_P_NE_JERK']
+            # Allow the deceleration ramp, the stopping run and controller settling.
+            max_braking_time_s = speed_ms / decel_mss + 2 * decel_mss / jerk_msss + 10
+            if braking_time_s > max_braking_time_s:
+                raise NotAchievedException('Excessive braking time %.2fs (limit %.2fs)' %
+                                           (braking_time_s, max_braking_time_s))
         # Allow for the 10 Hz transition-state and 20 Hz position telemetry.
         if point.time_boot_ms - events['transition_end'].time_boot_ms < 800:
             raise NotAchievedException('Landing point selected before stopping after the transition')
@@ -1401,8 +1415,8 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
         for message in self.context_collection('STATUSTEXT'):
             if 'Transition' in message.text and ('timeout' in message.text or 'roll error' in message.text):
                 raise NotAchievedException('Transition used a fallback: %s' % message.text)
-        self.progress('Stopping point %.2fm from old target; maximum landing displacement %.2fm' %
-                      (separation, max_distance))
+        self.progress('Braking time %.2fs; stopping point %.2fm from old target; maximum landing displacement %.2fm' %
+                      (braking_time_s, separation, max_distance))
 
     def TailsitterLandAtStop(self):
         '''Land where a tailsitter stops after transitioning, without returning to the landing waypoint'''
@@ -1411,6 +1425,17 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
     def TailsitterLandAtStopZeroCoordinates(self):
         '''Keep the post-transition stopping point when VTOL_LAND has zero latitude and longitude'''
         self.tailsitter_land_at_stop(zero_coordinates=True)
+
+    def TailsitterLandAtStopLowJerk(self):
+        '''Bound the stopping time with gentle position control and low jerk'''
+        self.tailsitter_land_at_stop(parameters={
+            'Q_TRANS_DECEL': 1,
+            'Q_P_NE_JERK': 0.2,
+            'Q_WP_ACC': 0.5,
+            'Q_P_NE_VEL_P': 0.28,
+            'Q_P_NE_VEL_I': 0.02,
+            'Q_A_ANGLE_MAX': 10,
+        })
 
     def setup_tailsitter_failsafe_mission(self, parameters=None):
         '''Start an isolated dual-motor tailsitter with the validated AUTO mission'''
@@ -3794,6 +3819,7 @@ class AutoTestQuadPlane(vehicle_test_suite.TestSuite):
             self.TailsitterAutoMission,
             self.TailsitterLandAtStop,
             self.TailsitterLandAtStopZeroCoordinates,
+            self.TailsitterLandAtStopLowJerk,
             self.TailsitterDualMotorSetup,
             self.TailsitterRealProfileSetup,
             self.TailsitterFailsafeRC,
